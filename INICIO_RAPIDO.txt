@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════════════════
+  🚀 INÍCIO RÁPIDO - Aplicação Clínica Estilo Robinhood
+═══════════════════════════════════════════════════════════════
+
+✅ O QUE JÁ ESTÁ PRONTO:
+  ✓ Estrutura completa do projeto
+  ✓ Frontend (Next.js) com UI estilo Robinhood
+  ✓ Backend (Node.js/Express)
+  ✓ Configuração para Supabase
+  ✓ Arquivos para deploy no Render
+  ✓ Documentação completa
+
+📋 O QUE VOCÊ PRECISA FAZER:
+
+1. CRIAR CONTA NO SUPABASE
+   → https://supabase.com
+   → Criar projeto
+   → Copiar credenciais (URL, anon key, service_role key)
+
+2. CRIAR CONTA NO RENDER
+   → https://render.com
+   → Criar conta gratuita
+
+3. CRIAR REPOSITÓRIO NO GITHUB
+   → https://github.com
+   → Criar novo repositório
+   → Fazer upload dos arquivos (pode usar GitHub Desktop)
+
+4. CONFIGURAR DEPLOY NO RENDER
+   → Seguir o GUIA_DEPLOY.md (passo a passo completo)
+
+⚠️ IMPORTANTE:
+  • Você NÃO precisa instalar Node.js para fazer deploy!
+  • O Render faz o build automaticamente
+  • Instale Node.js apenas se quiser testar localmente
+
+📚 DOCUMENTAÇÃO:
+  • GUIA_DEPLOY.md - Passo a passo completo de deploy
+  • README.md - Documentação geral do projeto
+  • setup.md - Guia de setup local
+  • INSTALACAO_NODEJS.md - Como instalar Node.js (opcional)
+
+═══════════════════════════════════════════════════════════════
+
+Depois que você criar as contas e repositório, me avise e eu 
+ajudo com o que mais precisar! 🎉
+
+═══════════════════════════════════════════════════════════════
+
+
