@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import Header from '@/components/Header'
-import StatsCard from '@/components/StatsCard'
-import ChartCard from '@/components/ChartCard'
-import ListCard from '@/components/ListCard'
+     import Header from '../components/Header'
+     import StatsCard from '../components/StatsCard'
+     import ChartCard from '../components/ChartCard'
+     import ListCard from '../components/ListCard'
 import { TrendingUp, Users, Activity, DollarSign } from 'lucide-react'
 
 export default function Home() {
@@ -77,5 +77,6 @@ export default function Home() {
     </div>
   )
 }
+
 
 
