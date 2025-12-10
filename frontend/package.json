@@ -17,7 +17,10 @@
     "recharts": "^2.10.3",
     "lucide-react": "^0.303.0",
     "framer-motion": "^10.16.16",
-    "clsx": "^2.1.0"
+    "clsx": "^2.1.0", 
+       "tailwindcss": "^3.3.0",
+   "postcss": "^8.4.31",
+   "autoprefixer": "^10.4.16"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -31,6 +34,7 @@
     "eslint-config-next": "14.0.4"
   }
 }
+
 
 
 
