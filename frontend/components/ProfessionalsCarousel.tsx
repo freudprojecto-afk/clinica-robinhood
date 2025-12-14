@@ -111,9 +111,13 @@ export default function ProfessionalsCarousel({ professionals }: ProfessionalsCa
                                   objectFit: 'cover'
                                 }}
                                 priority={index === currentIndex}
+                                unoptimized={true}
                                 onError={(e) => {
-                                  console.error('Erro ao carregar imagem:', professional.photo_url)
-                                  e.currentTarget.style.display = 'none'
+                                  console.error('❌ Erro ao carregar imagem:', professional.photo_url)
+                                  console.error('Erro detalhado:', e)
+                                }}
+                                onLoad={() => {
+                                  console.log('✅ Imagem carregada com sucesso:', professional.photo_url)
                                 }}
                               />
                             ) : (
@@ -244,6 +248,7 @@ export default function ProfessionalsCarousel({ professionals }: ProfessionalsCa
                         objectPosition: 'center center',
                         objectFit: 'cover'
                       }}
+                      unoptimized={true}
                       onError={(e) => {
                         console.error('Erro ao carregar imagem:', selectedProfessional.photo_url)
                         e.currentTarget.style.display = 'none'
