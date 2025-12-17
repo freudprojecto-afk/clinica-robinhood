@@ -4,8 +4,9 @@ services:
     name: clinica-frontend
     env: node
     plan: free
-    buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && npm start
+    rootDirectory: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
     envVars:
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
@@ -19,8 +20,9 @@ services:
     name: clinica-backend
     env: node
     plan: free
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && npm start
+    rootDirectory: backend
+    buildCommand: npm ci
+    startCommand: npm start
     envVars:
       - key: PORT
         value: 3001
