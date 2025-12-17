@@ -4,9 +4,8 @@ services:
     name: clinica-frontend
     env: node
     plan: free
-    rootDirectory: frontend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: cd frontend && npm install --no-workspaces && npm run build
+    startCommand: cd frontend && npm start
     envVars:
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
