@@ -1,0 +1,28 @@
+COMANDOS PARA FAZER DEPLOY PARA GITHUB
+========================================
+
+Execute estes comandos na pasta do projeto (onde está o .git):
+
+1. Navegar para a pasta frontend:
+   cd frontend
+
+2. Verificar alterações:
+   git status
+
+3. Adicionar todos os ficheiros:
+   git add .
+
+4. Fazer commit:
+   git commit -m "Fix: Corrigir filtro dropdown e estrutura da página com Corpo Clínico"
+
+5. Fazer push:
+   git push
+
+OU execute o script PowerShell:
+   .\deploy-to-github.ps1
+
+FICHEIROS MODIFICADOS:
+- frontend/app/page.tsx (filtro dropdown + estrutura completa)
+- frontend/app/layout.tsx (metadados atualizados)
+- frontend/app/globals.css (estilos para select)
+- frontend/next.config.js (configuração de imagens)
