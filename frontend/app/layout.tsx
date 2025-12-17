@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Clínica - Dashboard',
-  description: 'Aplicação web estilo Robinhood',
+  title: 'Corpo Clínico',
+  description: 'Conheça nossa equipa de psicólogos e psiquiatras experientes',
 }
 
 export default function RootLayout({
@@ -17,5 +17,3 @@ export default function RootLayout({
     </html>
   )
 }
-
-
