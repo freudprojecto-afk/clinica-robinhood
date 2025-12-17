@@ -13,7 +13,7 @@ Execute estes comandos na pasta do projeto (onde está o .git):
    git add .
 
 4. Fazer commit:
-   git commit -m "Fix: Corrigir filtro dropdown e estrutura da página com Corpo Clínico"
+   git commit -m "Add: Implementar carrossel de 3 em 3 no Corpo Clínico"
 
 5. Fazer push:
    git push
@@ -22,7 +22,7 @@ OU execute o script PowerShell:
    .\deploy-to-github.ps1
 
 FICHEIROS MODIFICADOS:
-- frontend/app/page.tsx (filtro dropdown + estrutura completa)
+- frontend/app/page.tsx (carrossel de profissionais 3 em 3)
 - frontend/app/layout.tsx (metadados atualizados)
-- frontend/app/globals.css (estilos para select)
-- frontend/next.config.js (configuração de imagens)
+- frontend/app/globals.css (estilos para select e scrollbar)
+- frontend/next.config.js (configuração de imagens remotas)
