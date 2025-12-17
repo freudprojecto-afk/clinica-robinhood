@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, ChevronDown, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck } from 'lucide-react'
+import { FileText, ChevronDown, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 interface Profissional {
@@ -22,6 +22,8 @@ function CorpoClinicoSection() {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Todas')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [itemsPerView, setItemsPerView] = useState(3)
 
   // Buscar profissionais da base de dados
   useEffect(() => {
@@ -68,6 +70,46 @@ function CorpoClinicoSection() {
   const profissionaisFiltrados = categoriaSelecionada === 'Todas'
     ? profissionais
     : profissionais.filter((p: Profissional) => p.speciality === categoriaSelecionada)
+
+  // Ajustar items por view baseado no tamanho da tela
+  useEffect(() => {
+    const updateItemsPerView = () => {
+      if (window.innerWidth < 768) {
+        setItemsPerView(1)
+      } else if (window.innerWidth < 1024) {
+        setItemsPerView(2)
+      } else {
+        setItemsPerView(3)
+      }
+    }
+
+    updateItemsPerView()
+    window.addEventListener('resize', updateItemsPerView)
+    return () => window.removeEventListener('resize', updateItemsPerView)
+  }, [])
+
+  // Resetar índice quando a categoria muda
+  useEffect(() => {
+    setCurrentIndex(0)
+  }, [categoriaSelecionada])
+
+  // Calcular total de slides
+  const totalSlides = Math.ceil(profissionaisFiltrados.length / itemsPerView)
+
+  // Navegação do carrossel
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % totalSlides)
+  }
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides)
+  }
+
+  // Obter profissionais visíveis no slide atual
+  const profissionaisVisiveis = profissionaisFiltrados.slice(
+    currentIndex * itemsPerView,
+    currentIndex * itemsPerView + itemsPerView
+  )
 
   // Obter URL da imagem
   const obterImagem = (profissional: Profissional) => {
@@ -205,7 +247,7 @@ function CorpoClinicoSection() {
           </div>
         </motion.div>
 
-        {/* Grid de Profissionais */}
+        {/* Carrossel de Profissionais */}
         {loading ? (
           <div className="text-center py-12">
             <p className="text-gray-400 text-lg">A carregar profissionais...</p>
@@ -215,10 +257,64 @@ function CorpoClinicoSection() {
             <p className="text-red-400 text-lg">Erro: {error}</p>
           </div>
         ) : profissionaisFiltrados.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {profissionaisFiltrados.map((profissional: Profissional, index: number) => (
-              <ProfissionalCard key={profissional.id} profissional={profissional} index={index} />
-            ))}
+          <div className="relative">
+            {/* Container do Carrossel */}
+            <div className="overflow-hidden">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.5 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                {profissionaisVisiveis.map((profissional: Profissional, index: number) => (
+                  <ProfissionalCard 
+                    key={profissional.id} 
+                    profissional={profissional} 
+                    index={index} 
+                  />
+                ))}
+              </motion.div>
+            </div>
+
+            {/* Botões de Navegação */}
+            {totalSlides > 1 && (
+              <>
+                <button
+                  onClick={prevSlide}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 bg-robinhood-green text-robinhood-dark p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-10"
+                  aria-label="Anterior"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 bg-robinhood-green text-robinhood-dark p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-10"
+                  aria-label="Próximo"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
+            )}
+
+            {/* Indicadores de Slide */}
+            {totalSlides > 1 && (
+              <div className="flex justify-center gap-2 mt-8">
+                {Array.from({ length: totalSlides }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentIndex(index)}
+                    className={`h-2 rounded-full transition-all ${
+                      index === currentIndex
+                        ? 'bg-robinhood-green w-8'
+                        : 'bg-gray-600 w-2 hover:bg-gray-500'
+                    }`}
+                    aria-label={`Ir para slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <motion.div
