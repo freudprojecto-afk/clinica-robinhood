@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 interface Profissional {
@@ -12,12 +12,13 @@ interface Profissional {
   speciality: string
   description?: string
   photo?: string
+  image?: string
+  foto?: string
 }
 
 export default function CorpoClinico() {
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Todas')
-  const [profissionalAtual, setProfissionalAtual] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,38 +51,41 @@ export default function CorpoClinico() {
   }, [])
 
   // Extrair categorias únicas do campo speciality
-  const categorias = Array.from(new Set(profissionais.map((p: Profissional) => p.speciality).filter((s): s is string => Boolean(s))))
+  const categorias = Array.from(
+    new Set(
+      profissionais
+        .map((p: Profissional) => p.speciality)
+        .filter((s: string | undefined): s is string => Boolean(s) && s.trim() !== '')
+    )
+  ).sort()
 
   // Filtrar profissionais baseado na categoria selecionada
   const profissionaisFiltrados = categoriaSelecionada === 'Todas'
     ? profissionais
     : profissionais.filter((p: Profissional) => p.speciality === categoriaSelecionada)
 
-  // Ajustar índice do profissional atual após filtro
-  const profissionalExibido = profissionaisFiltrados[profissionalAtual] || profissionaisFiltrados[0]
-
-  const proximoProfissional = () => {
-    setProfissionalAtual((prev: number) => (prev + 1) % profissionaisFiltrados.length)
-  }
-
-  const anteriorProfissional = () => {
-    setProfissionalAtual((prev: number) => (prev - 1 + profissionaisFiltrados.length) % profissionaisFiltrados.length)
-  }
-
-  // Resetar índice quando a categoria muda
-  const handleCategoriaChange = (categoria: string) => {
-    setCategoriaSelecionada(categoria)
-    setProfissionalAtual(0)
+  // Obter URL da imagem (tenta vários campos possíveis)
+  const obterImagem = (profissional: Profissional) => {
+    return profissional.photo || profissional.image || profissional.foto || null
   }
 
   // Obter iniciais do nome
   const obterIniciais = (nome: string) => {
-    return nome
-      .split(' ')
-      .filter(palavra => palavra.length > 0 && palavra[0] === palavra[0].toUpperCase())
+    const palavras = nome.split(' ').filter(p => p.length > 0)
+    if (palavras.length === 0) return '??'
+    
+    // Tenta pegar as primeiras letras maiúsculas
+    const iniciais = palavras
+      .filter(palavra => palavra[0] === palavra[0].toUpperCase())
       .map(palavra => palavra[0])
       .join('')
-      .substring(0, 2)
+    
+    if (iniciais.length >= 2) {
+      return iniciais.substring(0, 2)
+    }
+    
+    // Se não encontrou, pega as primeiras duas letras do nome completo
+    return nome.substring(0, 2).toUpperCase()
   }
 
   // Mostrar loading
@@ -129,7 +133,7 @@ export default function CorpoClinico() {
         >
           <div className="flex flex-wrap justify-center gap-3">
             <button
-              onClick={() => handleCategoriaChange('Todas')}
+              onClick={() => setCategoriaSelecionada('Todas')}
               className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
                 categoriaSelecionada === 'Todas'
                   ? 'bg-robinhood-green text-robinhood-dark'
@@ -138,10 +142,10 @@ export default function CorpoClinico() {
             >
               Todas
             </button>
-            {categorias.map((categoria) => (
+            {categorias.length > 0 && categorias.map((categoria) => (
               <button
                 key={categoria}
-                onClick={() => handleCategoriaChange(categoria)}
+                onClick={() => setCategoriaSelecionada(categoria)}
                 className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
                   categoriaSelecionada === categoria
                     ? 'bg-robinhood-green text-robinhood-dark'
@@ -154,94 +158,80 @@ export default function CorpoClinico() {
           </div>
         </motion.div>
 
-        {/* Card do Profissional */}
-        {profissionalExibido && (
-          <motion.div
-            key={profissionalExibido.id}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-            className="relative"
-          >
-            <div className="bg-robinhood-card border border-robinhood-border rounded-xl p-6 md:p-8">
-              <div className="flex flex-col md:flex-row gap-6">
-                {/* Foto do Profissional */}
-                <div className="flex-shrink-0">
-                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-robinhood-border border-2 border-robinhood-green flex items-center justify-center text-2xl md:text-3xl font-bold text-robinhood-green">
-                    {profissionalExibido.photo ? (
-                      <img
-                        src={profissionalExibido.photo}
-                        alt={profissionalExibido.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      obterIniciais(profissionalExibido.name)
-                    )}
+        {/* Grid de Profissionais */}
+        {profissionaisFiltrados.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {profissionaisFiltrados.map((profissional: Profissional, index: number) => {
+              const imagemUrl = obterImagem(profissional)
+              
+              return (
+                <motion.div
+                  key={profissional.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="bg-robinhood-card border border-robinhood-border rounded-xl p-6 hover:border-robinhood-green transition-colors"
+                >
+                  <div className="flex flex-col items-center md:items-start">
+                    {/* Foto do Profissional */}
+                    <div className="mb-4">
+                      <div className="w-32 h-32 md:w-28 md:h-28 rounded-full bg-robinhood-border border-2 border-robinhood-green flex items-center justify-center text-2xl font-bold text-robinhood-green overflow-hidden">
+                        {imagemUrl ? (
+                          <img
+                            src={imagemUrl}
+                            alt={profissional.name}
+                            className="w-full h-full rounded-full object-cover"
+                            onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                              // Se a imagem falhar ao carregar, mostra as iniciais
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                              const parent = target.parentElement
+                              if (parent) {
+                                parent.innerHTML = obterIniciais(profissional.name)
+                              }
+                            }}
+                          />
+                        ) : (
+                          obterIniciais(profissional.name)
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Informações do Profissional */}
+                    <div className="text-center md:text-left w-full">
+                      <h2 className="text-xl md:text-2xl font-bold mb-2">{profissional.name}</h2>
+                      {profissional.title && (
+                        <p className="text-robinhood-green text-sm mb-2">{profissional.title}</p>
+                      )}
+                      <p className="text-gray-300 text-sm mb-3 font-medium">{profissional.speciality}</p>
+                      {profissional.description && (
+                        <p className="text-gray-400 text-sm mb-4 leading-relaxed line-clamp-3">
+                          {profissional.description}
+                        </p>
+                      )}
+                      
+                      {/* Botão Ver CV Completo */}
+                      <button className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors text-sm">
+                        <FileText className="w-4 h-4" />
+                        Ver CV Completo
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                {/* Informações do Profissional */}
-                <div className="flex-1">
-                  <h2 className="text-2xl md:text-3xl font-bold mb-2">{profissionalExibido.name}</h2>
-                  {profissionalExibido.title && (
-                    <p className="text-robinhood-green mb-3">{profissionalExibido.title}</p>
-                  )}
-                  <p className="text-gray-300 mb-4 font-medium">{profissionalExibido.speciality}</p>
-                  {profissionalExibido.description && (
-                    <p className="text-gray-400 mb-6 leading-relaxed">{profissionalExibido.description}</p>
-                  )}
-                  
-                  {/* Botão Ver CV Completo */}
-                  <button className="inline-flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors">
-                    <FileText className="w-4 h-4" />
-                    Ver CV Completo
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Navegação */}
-            {profissionaisFiltrados.length > 1 && (
-              <div className="flex justify-between items-center mt-6">
-                <button
-                  onClick={anteriorProfissional}
-                  className="w-12 h-12 rounded-full bg-robinhood-card border border-robinhood-border flex items-center justify-center hover:border-robinhood-green hover:text-robinhood-green transition-colors"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <span className="text-gray-400 text-sm">
-                  {profissionalAtual + 1} de {profissionaisFiltrados.length}
-                </span>
-                <button
-                  onClick={proximoProfissional}
-                  className="w-12 h-12 rounded-full bg-robinhood-card border border-robinhood-border flex items-center justify-center hover:border-robinhood-green hover:text-robinhood-green transition-colors"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Mensagem quando não há profissionais */}
-        {profissionais.length === 0 && !loading && (
+                </motion.div>
+              )
+            })}
+          </div>
+        ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-center py-12"
           >
-            <p className="text-gray-400 text-lg">Nenhum profissional encontrado.</p>
-          </motion.div>
-        )}
-
-        {/* Mensagem quando não há profissionais na categoria selecionada */}
-        {profissionais.length > 0 && profissionaisFiltrados.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12"
-          >
-            <p className="text-gray-400 text-lg">Nenhum profissional encontrado nesta categoria.</p>
+            <p className="text-gray-400 text-lg">
+              {profissionais.length === 0 
+                ? 'Nenhum profissional encontrado.' 
+                : 'Nenhum profissional encontrado nesta categoria.'}
+            </p>
           </motion.div>
         )}
       </div>
