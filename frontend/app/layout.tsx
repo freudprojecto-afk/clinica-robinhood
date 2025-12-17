@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Clínica - Sistema de Gestão',
-  description: 'Sistema de gestão e informações da clínica. Conheça nossa equipa de psicólogos e psiquiatras experientes.',
+  title: 'Clínica Freud - Saúde Mental e Bem-Estar',
+  description: 'Clínica especializada em saúde mental. Oferecemos psicoterapia, psiquiatria e cuidados personalizados com uma equipa experiente de psicólogos e psiquiatras.',
 }
 
 export default function RootLayout({
