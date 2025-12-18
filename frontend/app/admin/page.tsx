@@ -31,27 +31,44 @@ export default function AdminPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null)
 
   useEffect(() => {
+    // Verificar se o Supabase está configurado
+    console.log('🔧 Verificando configuração do Supabase...')
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'NÃO CONFIGURADO')
+    console.log('Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Configurado' : 'NÃO CONFIGURADO')
+    
     fetchProfessionals()
   }, [])
 
   const fetchProfessionals = async () => {
     try {
       setIsLoading(true)
+      console.log('🔍 A buscar profissionais do Supabase...')
+      
       const { data, error } = await supabase
         .from('professionals')
         .select('*')
         .order('id', { ascending: true })
 
+      console.log('📊 Resposta do Supabase:', { data, error })
+
       if (error) {
+        console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao carregar profissionais: ${error.message}`)
         throw error
       }
 
       if (data) {
+        console.log(`✅ ${data.length} profissionais encontrados:`, data)
         setProfessionals(data)
+      } else {
+        console.warn('⚠️ Nenhum dado retornado do Supabase')
+        setProfessionals([])
       }
     } catch (error) {
-      console.error('Erro ao buscar profissionais:', error)
-      alert('Erro ao carregar profissionais')
+      console.error('❌ Erro ao buscar profissionais:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert(`Erro ao carregar profissionais: ${errorMessage}`)
+      setProfessionals([])
     } finally {
       setIsLoading(false)
     }
@@ -424,7 +441,10 @@ export default function AdminPage() {
 
         {professionals.length === 0 && !isCreating && (
           <div className="text-center py-12">
-            <p className="text-gray-400">Nenhum profissional cadastrado ainda.</p>
+            <p className="text-gray-400 mb-4">Nenhum profissional cadastrado ainda.</p>
+            <p className="text-gray-500 text-sm">
+              Abra a consola do navegador (F12) para ver os logs de debug.
+            </p>
           </div>
         )}
       </div>
