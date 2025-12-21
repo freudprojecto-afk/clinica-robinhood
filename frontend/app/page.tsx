@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, ChevronDown, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck } from 'lucide-react'
+import { FileText, ChevronDown, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 interface Profissional {
@@ -12,6 +12,7 @@ interface Profissional {
   speciality?: string
   specialty?: string  // Pode ser speciality ou specialty
   description?: string
+  cv?: string  // Campo para CV completo
   photo?: string
   photo_url?: string  // Campo usado no Supabase
   image?: string
@@ -26,6 +27,7 @@ function CorpoClinicoSection() {
   const [error, setError] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [itemsPerView, setItemsPerView] = useState(3)
+  const [profissionalSelecionado, setProfissionalSelecionado] = useState<Profissional | null>(null)
 
   // Buscar profissionais da base de dados
   useEffect(() => {
@@ -257,7 +259,10 @@ function CorpoClinicoSection() {
               </p>
             )}
             
-            <button className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors text-sm">
+            <button 
+              onClick={() => setProfissionalSelecionado(profissional)}
+              className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors text-sm"
+            >
               <FileText className="w-4 h-4" />
               Ver CV Completo
             </button>
@@ -399,6 +404,76 @@ function CorpoClinicoSection() {
           </motion.div>
         )}
       </div>
+
+      {/* Modal do CV Completo */}
+      {profissionalSelecionado && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setProfissionalSelecionado(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-robinhood-card border border-robinhood-border rounded-xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-white">
+                {profissionalSelecionado.name}
+              </h2>
+              <button
+                onClick={() => setProfissionalSelecionado(null)}
+                className="text-gray-400 hover:text-white transition-colors p-2"
+                aria-label="Fechar"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Foto e Informações Básicas */}
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="w-32 h-32 rounded-full bg-robinhood-border border-2 border-robinhood-green flex items-center justify-center text-3xl font-bold text-robinhood-green overflow-hidden flex-shrink-0">
+                  {obterImagem(profissionalSelecionado) ? (
+                    <img
+                      src={obterImagem(profissionalSelecionado)!}
+                      alt={profissionalSelecionado.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    obterIniciais(profissionalSelecionado.name)
+                  )}
+                </div>
+                <div className="flex-1">
+                  {profissionalSelecionado.title && (
+                    <p className="text-robinhood-green text-lg mb-2 font-semibold">
+                      {profissionalSelecionado.title}
+                    </p>
+                  )}
+                  <p className="text-gray-300 text-base mb-2 font-medium">
+                    {profissionalSelecionado.speciality || profissionalSelecionado.specialty || 'Sem especialidade'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Descrição/CV Completo */}
+              {(profissionalSelecionado.cv || profissionalSelecionado.description) ? (
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-3">Currículo</h3>
+                  <div className="text-gray-300 leading-relaxed whitespace-pre-line">
+                    {profissionalSelecionado.cv || profissionalSelecionado.description}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-gray-400 italic">
+                  Informação adicional não disponível.
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </section>
   )
 }
