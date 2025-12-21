@@ -13,6 +13,7 @@ interface Profissional {
   specialty?: string  // Pode ser speciality ou specialty
   description?: string
   photo?: string
+  photo_url?: string  // Campo usado no Supabase
   image?: string
   foto?: string
 }
@@ -43,6 +44,15 @@ function CorpoClinicoSection() {
 
         if (data) {
           console.log(`✅ ${data.length} profissionais encontrados:`, data)
+          // Log de cada profissional para debug
+          data.forEach((p: Profissional) => {
+            console.log(`📋 ${p.name}:`, {
+              photo_url: p.photo_url,
+              photo: p.photo,
+              image: p.image,
+              foto: p.foto
+            })
+          })
           setProfissionais(data)
         } else {
           console.warn('⚠️ Nenhum dado retornado')
@@ -147,21 +157,23 @@ function CorpoClinicoSection() {
 
   // Obter URL da imagem
   const obterImagem = (profissional: Profissional) => {
-    const url = profissional.photo || profissional.image || profissional.foto || null
+    // Tentar todos os campos possíveis (photo_url é o campo usado no Supabase)
+    const url = profissional.photo_url || profissional.photo || profissional.image || profissional.foto || null
     if (!url) {
       console.log(`📷 Sem imagem para ${profissional.name}`)
+      console.log('   Campos disponíveis:', Object.keys(profissional))
       return null
     }
     
     // Validar URL
-    let finalUrl = url
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      finalUrl = url
-    } else if (url.startsWith('/')) {
-      finalUrl = url
+    let finalUrl = url.trim()
+    if (finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
+      finalUrl = finalUrl
+    } else if (finalUrl.startsWith('/')) {
+      finalUrl = finalUrl
     } else {
       // Se não começar com http ou /, assumir que é uma URL completa
-      finalUrl = url
+      finalUrl = finalUrl
     }
     
     console.log(`📷 Imagem para ${profissional.name}:`, finalUrl)
@@ -190,6 +202,7 @@ function CorpoClinicoSection() {
       if (imagemUrl) {
         console.log(`🖼️ A tentar carregar imagem para ${profissional.name}:`, imagemUrl)
         const img = new Image()
+        img.crossOrigin = 'anonymous' // Permitir CORS se necessário
         img.onload = () => {
           console.log(`✅ Imagem carregada com sucesso para ${profissional.name}`)
           setImagemCarregando(false)
