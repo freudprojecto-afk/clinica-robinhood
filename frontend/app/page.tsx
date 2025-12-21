@@ -9,7 +9,8 @@ interface Profissional {
   id: number
   name: string
   title?: string
-  speciality: string
+  speciality?: string
+  specialty?: string  // Pode ser speciality ou specialty
   description?: string
   photo?: string
   image?: string
@@ -30,6 +31,7 @@ function CorpoClinicoSection() {
     async function fetchProfissionais() {
       try {
         setLoading(true)
+        console.log('🔍 A buscar profissionais do Supabase...')
         const { data, error: fetchError } = await supabase
           .from('professionals')
           .select('*')
@@ -40,11 +42,15 @@ function CorpoClinicoSection() {
         }
 
         if (data) {
+          console.log(`✅ ${data.length} profissionais encontrados:`, data)
           setProfissionais(data)
+        } else {
+          console.warn('⚠️ Nenhum dado retornado')
+          setProfissionais([])
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar profissionais')
-        console.error('Erro ao buscar profissionais:', err)
+        console.error('❌ Erro ao buscar profissionais:', err)
       } finally {
         setLoading(false)
       }
@@ -55,21 +61,49 @@ function CorpoClinicoSection() {
 
   // Extrair categorias únicas do campo speciality
   const categorias = useMemo(() => {
-    const cats = Array.from(
-      new Set(
-        profissionais
-          .map((p: Profissional) => p.speciality)
-          .filter((s): s is string => typeof s === 'string' && s.trim() !== '')
-      )
-    ).sort()
-    console.log('Categorias extraídas:', cats)
+    if (!profissionais || profissionais.length === 0) {
+      console.log('⚠️ Nenhum profissional para extrair categorias')
+      return []
+    }
+
+    // Extrair todas as especialidades, verificando tanto speciality quanto specialty
+    const todasEspecialidades = profissionais
+      .map((p: Profissional) => {
+        // Tentar speciality primeiro, depois specialty
+        const especialidade = p.speciality || p.specialty || null
+        if (!especialidade) {
+          console.warn(`⚠️ Profissional ${p.name} (ID: ${p.id}) não tem especialidade definida`)
+          console.warn('   Campos disponíveis:', Object.keys(p))
+          console.warn('   Dados completos:', p)
+        }
+        return especialidade
+      })
+      .filter((s): s is string => {
+        const isValid = s !== null && s !== undefined && typeof s === 'string' && s.trim() !== ''
+        return isValid
+      })
+
+    // Remover duplicados e ordenar
+    const cats = Array.from(new Set(todasEspecialidades)).sort()
+    
+    console.log('📊 Profissionais analisados:', profissionais.length)
+    console.log('📊 Especialidades encontradas (antes de remover duplicados):', todasEspecialidades)
+    console.log('✅ Categorias únicas extraídas:', cats)
+    console.log('✅ Total de categorias:', cats.length)
+    
     return cats
   }, [profissionais])
 
   // Filtrar profissionais baseado na categoria selecionada
-  const profissionaisFiltrados = categoriaSelecionada === 'Todas'
-    ? profissionais
-    : profissionais.filter((p: Profissional) => p.speciality === categoriaSelecionada)
+  const profissionaisFiltrados = useMemo(() => {
+    if (categoriaSelecionada === 'Todas') {
+      return profissionais
+    }
+    return profissionais.filter((p: Profissional) => {
+      const especialidade = p.speciality || p.specialty
+      return especialidade === categoriaSelecionada
+    })
+  }, [profissionais, categoriaSelecionada])
 
   // Ajustar items por view baseado no tamanho da tela
   useEffect(() => {
@@ -114,10 +148,24 @@ function CorpoClinicoSection() {
   // Obter URL da imagem
   const obterImagem = (profissional: Profissional) => {
     const url = profissional.photo || profissional.image || profissional.foto || null
-    if (!url) return null
-    if (url.startsWith('http://') || url.startsWith('https://')) return url
-    if (url.startsWith('/')) return url
-    return url
+    if (!url) {
+      console.log(`📷 Sem imagem para ${profissional.name}`)
+      return null
+    }
+    
+    // Validar URL
+    let finalUrl = url
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      finalUrl = url
+    } else if (url.startsWith('/')) {
+      finalUrl = url
+    } else {
+      // Se não começar com http ou /, assumir que é uma URL completa
+      finalUrl = url
+    }
+    
+    console.log(`📷 Imagem para ${profissional.name}:`, finalUrl)
+    return finalUrl
   }
 
   // Obter iniciais do nome
@@ -140,21 +188,25 @@ function CorpoClinicoSection() {
 
     useEffect(() => {
       if (imagemUrl) {
+        console.log(`🖼️ A tentar carregar imagem para ${profissional.name}:`, imagemUrl)
         const img = new Image()
         img.onload = () => {
+          console.log(`✅ Imagem carregada com sucesso para ${profissional.name}`)
           setImagemCarregando(false)
           setImagemErro(false)
         }
-        img.onerror = () => {
+        img.onerror = (err) => {
+          console.error(`❌ Erro ao carregar imagem para ${profissional.name}:`, imagemUrl, err)
           setImagemCarregando(false)
           setImagemErro(true)
         }
         img.src = imagemUrl
       } else {
+        console.log(`⚠️ Sem URL de imagem para ${profissional.name}, usando iniciais`)
         setImagemCarregando(false)
         setImagemErro(true)
       }
-    }, [imagemUrl])
+    }, [imagemUrl, profissional.name])
 
     return (
       <motion.div
@@ -185,7 +237,7 @@ function CorpoClinicoSection() {
             {profissional.title && (
               <p className="text-robinhood-green text-sm mb-2">{profissional.title}</p>
             )}
-            <p className="text-gray-300 text-sm mb-3 font-medium">{profissional.speciality}</p>
+            <p className="text-gray-300 text-sm mb-3 font-medium">{profissional.speciality || profissional.specialty || 'Sem especialidade'}</p>
             {profissional.description && (
               <p className="text-gray-400 text-sm mb-4 leading-relaxed line-clamp-3">
                 {profissional.description}
@@ -226,20 +278,24 @@ function CorpoClinicoSection() {
             <select
               value={categoriaSelecionada}
               onChange={(e) => {
-                console.log('Categoria selecionada:', e.target.value)
+                console.log('📋 Categoria selecionada:', e.target.value)
                 setCategoriaSelecionada(e.target.value)
               }}
               className="appearance-none bg-robinhood-card border border-robinhood-border text-white px-6 py-2 pr-10 rounded-lg font-medium transition-all duration-200 hover:border-robinhood-green focus:outline-none focus:border-robinhood-green cursor-pointer min-w-[250px]"
             >
               <option value="Todas">Todas</option>
-              {categorias.map((categoria) => (
-                <option 
-                  key={categoria} 
-                  value={categoria}
-                >
-                  {categoria}
-                </option>
-              ))}
+              {categorias.length > 0 ? (
+                categorias.map((categoria) => (
+                  <option 
+                    key={categoria} 
+                    value={categoria}
+                  >
+                    {categoria}
+                  </option>
+                ))
+              ) : (
+                <option disabled>Nenhuma categoria disponível</option>
+              )}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 z-0">
               <ChevronDown className="w-5 h-5" />
