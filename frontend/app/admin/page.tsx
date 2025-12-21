@@ -139,7 +139,7 @@ export default function AdminPage() {
   const handlePhotoUpload = async (id: number, file: File) => {
     setUploadingPhoto(id)
     try {
-      // Upload para Supabase Storage
+      // Tentar upload para Supabase Storage (se o bucket existir)
       const fileExt = file.name.split('.').pop()
       const fileName = `${id}-${Math.random()}.${fileExt}`
       const filePath = `professionals/${fileName}`
@@ -149,6 +149,19 @@ export default function AdminPage() {
         .upload(filePath, file)
 
       if (uploadError) {
+        // Se o bucket não existir, mostrar mensagem clara
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL da Foto"\n' +
+          '3. Clique em "Salvar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
         throw uploadError
       }
 
@@ -171,7 +184,10 @@ export default function AdminPage() {
       alert('Foto atualizada com sucesso!')
     } catch (error) {
       console.error('Erro ao fazer upload:', error)
-      alert('Erro ao fazer upload da foto. Certifique-se de que o bucket "photos" existe no Supabase Storage.')
+      // A mensagem já foi mostrada acima se for erro de bucket
+      if (error && typeof error === 'object' && 'message' in error && !String(error.message).includes('bucket')) {
+        alert('Erro ao fazer upload da foto. Use o botão "Colar URL" (verde) para adicionar uma URL de imagem diretamente.')
+      }
     } finally {
       setUploadingPhoto(null)
     }
@@ -218,7 +234,7 @@ export default function AdminPage() {
       <div className="container mx-auto max-w-6xl">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-white">
-            Gestão de <span className="text-robinhood-green">Profissionais</span>
+          Gestão de <span className="text-robinhood-green">Profissionais</span>
           </h1>
           {!isCreating && (
             <button
@@ -271,13 +287,21 @@ export default function AdminPage() {
                 rows={4}
                 className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
               />
-              <input
-                type="text"
-                placeholder="URL da Foto (opcional)"
-                value={formData.photo || ''}
-                onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
-                className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
-              />
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  URL da Foto (opcional) - Cole aqui a URL da imagem
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  value={formData.photo || ''}
+                  onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
+                  className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                </p>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleCreate}
@@ -337,13 +361,21 @@ export default function AdminPage() {
                       rows={4}
                       className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
                     />
-                    <input
-                      type="text"
-                      placeholder="URL da Foto"
-                      value={formData.photo || ''}
-                      onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
-                      className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
-                    />
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        URL da Foto - Cole aqui a URL da imagem
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://exemplo.com/imagem.jpg"
+                        value={formData.photo || ''}
+                        onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                      </p>
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleUpdate(professional.id)}
@@ -411,11 +443,22 @@ export default function AdminPage() {
                             ) : (
                               <>
                                 <Upload className="w-4 h-4" />
-                                Foto
+                                Upload Foto
                               </>
                             )}
                           </span>
                         </label>
+                        <button
+                          onClick={() => {
+                            startEdit(professional)
+                            alert('💡 Dica: Cole a URL da imagem no campo "URL da Foto" e clique em "Salvar"')
+                          }}
+                          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                          title="Colar URL da imagem diretamente"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Colar URL
+                        </button>
                         <button
                           onClick={() => startEdit(professional)}
                           className="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors"
