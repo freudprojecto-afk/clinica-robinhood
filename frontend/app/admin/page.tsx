@@ -108,38 +108,43 @@ export default function AdminPage() {
       console.log('💾 Atualizando profissional ID:', id, 'com dados:', formData)
       
       const updateData: any = {
-        name: formData.name,
-        title: formData.title,
-        speciality: formData.speciality,
-        description: formData.description,
+        name: formData.name || '',
+        title: formData.title || null,
+        speciality: formData.speciality || '',
+        description: formData.description || null,
       }
       
-      if (formData.photo) {
-        updateData.photo_url = formData.photo
-        updateData.photo = formData.photo
+      if (formData.photo && formData.photo.trim() !== '') {
+        updateData.photo_url = formData.photo.trim()
+        updateData.photo = formData.photo.trim()
       }
 
       console.log('📤 Dados a enviar:', updateData)
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('professionals')
         .update(updateData)
         .eq('id', id)
+        .select()
 
       if (error) {
         console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao atualizar: ${error.message}\n\nVerifique a consola (F12) para mais detalhes.`)
         throw error
       }
 
-      console.log('✅ Profissional atualizado com sucesso!')
+      console.log('✅ Profissional atualizado com sucesso! Dados retornados:', data)
+      
       await fetchProfessionals()
+      
       setEditingId(null)
       setFormData({ name: '', title: '', speciality: '', description: '', photo: '' })
-      alert('Profissional atualizado com sucesso!')
+      
+      alert('✅ Profissional atualizado com sucesso!\n\nAs alterações foram salvas na base de dados.')
     } catch (error) {
       console.error('❌ Erro ao atualizar profissional:', error)
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
-      alert(`Erro ao atualizar profissional: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
+      alert(`❌ Erro ao atualizar profissional: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
     }
   }
 
@@ -201,6 +206,8 @@ export default function AdminPage() {
     const previous = professionals[index - 1]
 
     console.log(`⬆️ Movendo ${current.name} para cima (posição ${index} -> ${index - 1})`)
+    console.log('📋 Profissional atual:', current)
+    console.log('📋 Profissional anterior:', previous)
     setMovingProfessional(current.id)
 
     try {
@@ -210,11 +217,14 @@ export default function AdminPage() {
       const previousOrder = previous.order ?? index
 
       console.log(`📊 Ordens: atual=${currentOrder}, anterior=${previousOrder}`)
+      console.log(`🔄 Atualizando ${current.name} (ID: ${current.id}) para order=${previousOrder}`)
+      console.log(`🔄 Atualizando ${previous.name} (ID: ${previous.id}) para order=${currentOrder}`)
 
-      const { error: error1 } = await supabase
+      const { data: data1, error: error1 } = await supabase
         .from('professionals')
         .update({ order: previousOrder })
         .eq('id', current.id)
+        .select()
 
       if (error1) {
         console.error('❌ Erro ao atualizar ordem:', error1)
@@ -239,10 +249,13 @@ export default function AdminPage() {
         throw error1
       }
 
-      const { error: error2 } = await supabase
+      console.log('✅ Primeira atualização bem-sucedida:', data1)
+
+      const { data: data2, error: error2 } = await supabase
         .from('professionals')
         .update({ order: currentOrder })
         .eq('id', previous.id)
+        .select()
 
       if (error2) {
         console.error('❌ Erro ao atualizar profissional anterior:', error2)
@@ -253,13 +266,24 @@ export default function AdminPage() {
         throw error2
       }
 
+      console.log('✅ Segunda atualização bem-sucedida:', data2)
       console.log('✅ Ordem atualizada com sucesso!')
-      alert(`✅ ${current.name} movido para cima com sucesso!`)
+      
       await fetchProfessionals()
+      
+      const { data: verifyData } = await supabase
+        .from('professionals')
+        .select('id, name, order')
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('id', { ascending: true })
+      
+      console.log('🔍 Verificação da ordem após atualização:', verifyData)
+      
+      alert(`✅ ${current.name} movido para cima com sucesso!\n\nA ordem foi atualizada na base de dados.`)
     } catch (error) {
       console.error('❌ Erro ao mover profissional:', error)
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
-      alert(`Erro ao alterar ordem: ${errorMsg}`)
+      alert(`❌ Erro ao alterar ordem: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
     } finally {
       setMovingProfessional(null)
     }
@@ -275,6 +299,8 @@ export default function AdminPage() {
     const next = professionals[index + 1]
 
     console.log(`⬇️ Movendo ${current.name} para baixo (posição ${index} -> ${index + 1})`)
+    console.log('📋 Profissional atual:', current)
+    console.log('📋 Profissional próximo:', next)
     setMovingProfessional(current.id)
 
     try {
@@ -284,11 +310,14 @@ export default function AdminPage() {
       const nextOrder = next.order ?? (index + 2)
 
       console.log(`📊 Ordens: atual=${currentOrder}, próximo=${nextOrder}`)
+      console.log(`🔄 Atualizando ${current.name} (ID: ${current.id}) para order=${nextOrder}`)
+      console.log(`🔄 Atualizando ${next.name} (ID: ${next.id}) para order=${currentOrder}`)
 
-      const { error: error1 } = await supabase
+      const { data: data1, error: error1 } = await supabase
         .from('professionals')
         .update({ order: nextOrder })
         .eq('id', current.id)
+        .select()
 
       if (error1) {
         console.error('❌ Erro ao atualizar ordem:', error1)
@@ -313,10 +342,13 @@ export default function AdminPage() {
         throw error1
       }
 
-      const { error: error2 } = await supabase
+      console.log('✅ Primeira atualização bem-sucedida:', data1)
+
+      const { data: data2, error: error2 } = await supabase
         .from('professionals')
         .update({ order: currentOrder })
         .eq('id', next.id)
+        .select()
 
       if (error2) {
         console.error('❌ Erro ao atualizar próximo profissional:', error2)
@@ -327,13 +359,24 @@ export default function AdminPage() {
         throw error2
       }
 
+      console.log('✅ Segunda atualização bem-sucedida:', data2)
       console.log('✅ Ordem atualizada com sucesso!')
-      alert(`✅ ${current.name} movido para baixo com sucesso!`)
+      
       await fetchProfessionals()
+      
+      const { data: verifyData } = await supabase
+        .from('professionals')
+        .select('id, name, order')
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('id', { ascending: true })
+      
+      console.log('🔍 Verificação da ordem após atualização:', verifyData)
+      
+      alert(`✅ ${current.name} movido para baixo com sucesso!\n\nA ordem foi atualizada na base de dados.`)
     } catch (error) {
       console.error('❌ Erro ao mover profissional:', error)
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
-      alert(`Erro ao alterar ordem: ${errorMsg}`)
+      alert(`❌ Erro ao alterar ordem: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
     } finally {
       setMovingProfessional(null)
     }
