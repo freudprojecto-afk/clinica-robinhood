@@ -6,22 +6,24 @@ import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X } from 'lucide-
 import { supabase } from '../../lib/supabase'
 
 interface Professional {
-  id: number
+  id: string  // UUID no Supabase
   name: string
   title?: string
-  speciality: string
+  speciality?: string  // Pode ser speciality ou specialty
+  specialty?: string  // Campo usado no Supabase
   description?: string
+  cv?: string  // Campo usado no Supabase (em vez de description)
   photo?: string
-  photo_url?: string
+  photo_url?: string  // Campo usado no Supabase
   image?: string
   foto?: string
-  order?: number
+  order?: number  // Campo para ordenação
 }
 
 export default function AdminPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)  // UUID é string
   const [isCreating, setIsCreating] = useState(false)
   const [formData, setFormData] = useState<Partial<Professional>>({
     name: '',
@@ -30,8 +32,8 @@ export default function AdminPage() {
     description: '',
     photo: '',
   })
-  const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null)
-  const [movingProfessional, setMovingProfessional] = useState<number | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null)  // UUID é string
+  const [movingProfessional, setMovingProfessional] = useState<string | null>(null)  // UUID é string
 
   useEffect(() => {
     console.log('🔧 Verificando configuração do Supabase...')
@@ -49,8 +51,8 @@ export default function AdminPage() {
       const { data, error } = await supabase
         .from('professionals')
         .select('*')
-        .order('order', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true })
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('name', { ascending: true })
 
       console.log('📊 Resposta do Supabase:', { data, error })
 
@@ -80,43 +82,66 @@ export default function AdminPage() {
   const handleCreate = async () => {
     try {
       const maxOrder = professionals.length > 0 
-        ? Math.max(...professionals.map(p => p.order ?? p.id), 0)
+        ? Math.max(...professionals.map(p => p.order ?? 0), 0)
         : 0
       
       const newOrder = maxOrder + 1
 
-      const { error } = await supabase
+      // IMPORTANTE: A base de dados usa 'specialty' e 'cv', não 'speciality' e 'description'
+      const insertData: any = {
+        name: formData.name || '',
+        title: formData.title || null,
+        specialty: formData.speciality || '',  // Usar specialty (nome correto na BD)
+        cv: formData.description || null,  // Usar cv (nome correto na BD)
+        order: newOrder,
+      }
+      
+      // Adicionar photo_url se existir
+      if (formData.photo && formData.photo.trim() !== '') {
+        insertData.photo_url = formData.photo.trim()
+      }
+
+      console.log('📤 Dados a inserir:', insertData)
+      
+      const { data, error } = await supabase
         .from('professionals')
-        .insert([{ ...formData, order: newOrder }])
+        .insert([insertData])
+        .select()
 
       if (error) {
+        console.error('❌ Erro do Supabase ao criar:', error)
+        alert(`Erro ao criar profissional: ${error.message}\n\nVerifique a consola (F12) para mais detalhes.`)
         throw error
       }
 
+      console.log('✅ Profissional criado com sucesso! Dados retornados:', data)
+      
       await fetchProfessionals()
       setIsCreating(false)
       setFormData({ name: '', title: '', speciality: '', description: '', photo: '' })
-      alert('Profissional criado com sucesso!')
+      alert('✅ Profissional criado com sucesso!')
     } catch (error) {
-      console.error('Erro ao criar profissional:', error)
-      alert('Erro ao criar profissional')
+      console.error('❌ Erro ao criar profissional:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert(`❌ Erro ao criar profissional: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
     }
   }
 
-  const handleUpdate = async (id: number) => {
+  const handleUpdate = async (id: string) => {  // UUID é string
     try {
       console.log('💾 Atualizando profissional ID:', id, 'com dados:', formData)
       
+      // IMPORTANTE: A base de dados usa 'specialty' e 'cv', não 'speciality' e 'description'
       const updateData: any = {
         name: formData.name || '',
         title: formData.title || null,
-        speciality: formData.speciality || '',
-        description: formData.description || null,
+        specialty: formData.speciality || formData.specialty || '',  // Usar specialty (nome correto na BD)
+        cv: formData.description || formData.cv || null,  // Usar cv (nome correto na BD)
       }
       
+      // Atualizar photo_url se photo estiver preenchido
       if (formData.photo && formData.photo.trim() !== '') {
         updateData.photo_url = formData.photo.trim()
-        updateData.photo = formData.photo.trim()
       }
 
       console.log('📤 Dados a enviar:', updateData)
@@ -148,7 +173,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {  // UUID é string
     if (!confirm('Tem certeza que deseja excluir este profissional?')) return
 
     try {
@@ -171,7 +196,7 @@ export default function AdminPage() {
 
   const inicializarOrdem = async () => {
     try {
-      const precisaInicializar = professionals.some(p => p.order === null || p.order === undefined)
+      const precisaInicializar = professionals.some(p => p.order === null || p.order === undefined || p.order === 0)
       
       if (precisaInicializar) {
         console.log('🔄 Inicializando ordem dos profissionais...')
@@ -231,17 +256,15 @@ export default function AdminPage() {
         if (error1.message.includes('column') || error1.message.includes('order') || error1.message.includes('does not exist')) {
           alert(
             '⚠️ Campo "order" não encontrado na base de dados!\n\n' +
-            'Por favor, adicione a coluna "order" na tabela "professionals" no Supabase.\n\n' +
+            'Por favor, adicione a coluna "order" (minúsculas) na tabela "professionals" no Supabase.\n\n' +
             'Passos:\n' +
-            '1. Vá ao Supabase Dashboard (https://supabase.com)\n' +
-            '2. Selecione o seu projeto\n' +
-            '3. Vá a "Table Editor" > "professionals"\n' +
-            '4. Clique em "Add Column"\n' +
-            '5. Nome: "order"\n' +
-            '6. Tipo: "int8" ou "integer"\n' +
-            '7. Nullable: Sim (marcar)\n' +
-            '8. Clique em "Save"\n\n' +
-            'Depois disso, recarregue a página e tente novamente!'
+            '1. Vá ao Supabase Dashboard\n' +
+            '2. Table Editor > professionals\n' +
+            '3. Clique em "Add Column"\n' +
+            '4. Nome: "order" (minúsculas!)\n' +
+            '5. Tipo: "int8" ou "integer"\n' +
+            '6. Nullable: Sim (marcar)\n' +
+            '7. Clique em "Save"'
           )
         } else {
           alert(`Erro: ${error1.message}\n\nVerifique a consola (F12) para mais detalhes.`)
@@ -275,7 +298,7 @@ export default function AdminPage() {
         .from('professionals')
         .select('id, name, order')
         .order('order', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true })
+        .order('name', { ascending: true })
       
       console.log('🔍 Verificação da ordem após atualização:', verifyData)
       
@@ -324,17 +347,15 @@ export default function AdminPage() {
         if (error1.message.includes('column') || error1.message.includes('order') || error1.message.includes('does not exist')) {
           alert(
             '⚠️ Campo "order" não encontrado na base de dados!\n\n' +
-            'Por favor, adicione a coluna "order" na tabela "professionals" no Supabase.\n\n' +
+            'Por favor, adicione a coluna "order" (minúsculas) na tabela "professionals" no Supabase.\n\n' +
             'Passos:\n' +
-            '1. Vá ao Supabase Dashboard (https://supabase.com)\n' +
-            '2. Selecione o seu projeto\n' +
-            '3. Vá a "Table Editor" > "professionals"\n' +
-            '4. Clique em "Add Column"\n' +
-            '5. Nome: "order"\n' +
-            '6. Tipo: "int8" ou "integer"\n' +
-            '7. Nullable: Sim (marcar)\n' +
-            '8. Clique em "Save"\n\n' +
-            'Depois disso, recarregue a página e tente novamente!'
+            '1. Vá ao Supabase Dashboard\n' +
+            '2. Table Editor > professionals\n' +
+            '3. Clique em "Add Column"\n' +
+            '4. Nome: "order" (minúsculas!)\n' +
+            '5. Tipo: "int8" ou "integer"\n' +
+            '6. Nullable: Sim (marcar)\n' +
+            '7. Clique em "Save"'
           )
         } else {
           alert(`Erro: ${error1.message}\n\nVerifique a consola (F12) para mais detalhes.`)
@@ -368,7 +389,7 @@ export default function AdminPage() {
         .from('professionals')
         .select('id, name, order')
         .order('order', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true })
+        .order('name', { ascending: true })
       
       console.log('🔍 Verificação da ordem após atualização:', verifyData)
       
@@ -382,7 +403,7 @@ export default function AdminPage() {
     }
   }
 
-  const handlePhotoUpload = async (id: number, file: File) => {
+  const handlePhotoUpload = async (id: string, file: File) => {  // UUID é string
     setUploadingPhoto(id)
     try {
       const fileExt = file.name.split('.').pop()
@@ -438,18 +459,21 @@ export default function AdminPage() {
     console.log('✏️ Iniciando edição de:', professional)
     setEditingId(professional.id)
     const photoUrl = professional.photo_url || professional.photo || professional.image || professional.foto || ''
+    // IMPORTANTE: A base de dados usa 'specialty' e 'cv', não 'speciality' e 'description'
+    const specialty = professional.specialty || professional.speciality || ''
+    const description = professional.cv || professional.description || ''
     setFormData({
       name: professional.name || '',
       title: professional.title || '',
-      speciality: professional.speciality || '',
-      description: professional.description || '',
+      speciality: specialty,  // Mapear specialty para speciality no form
+      description: description,  // Mapear cv para description no form
       photo: photoUrl,
     })
     console.log('📝 FormData definido:', {
       name: professional.name || '',
       title: professional.title || '',
-      speciality: professional.speciality || '',
-      description: professional.description || '',
+      speciality: specialty,
+      description: description,
       photo: photoUrl,
     })
   }
@@ -842,9 +866,9 @@ export default function AdminPage() {
                       {professional.title && (
                         <p className="text-robinhood-green mb-2">{professional.title}</p>
                       )}
-                      <p className="text-gray-300 mb-2">{professional.speciality}</p>
-                      {professional.description && (
-                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">{professional.description}</p>
+                      <p className="text-gray-300 mb-2">{professional.specialty || professional.speciality}</p>
+                      {(professional.cv || professional.description) && (
+                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">{professional.cv || professional.description}</p>
                       )}
                       <div className="flex gap-2 flex-wrap">
                         <label className="cursor-pointer">
