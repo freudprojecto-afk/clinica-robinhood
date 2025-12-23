@@ -146,18 +146,19 @@ export default function AdminPage() {
       }
       
       // Atualizar photo_url se photo estiver preenchido
+      // IMPORTANTE: A base de dados usa 'photo_url', não 'photo'
       if (formData.photo && formData.photo.trim() !== '') {
         updateData.photo_url = formData.photo.trim()
-        updateData.photo = formData.photo.trim()  // Manter compatibilidade
       }
 
       console.log('📤 Dados a enviar:', updateData)
 
+      // IMPORTANTE: Especificar explicitamente as colunas a retornar (sem 'description' e sem 'photo')
       const { data, error } = await supabase
         .from('professionals')
         .update(updateData)
         .eq('id', id)
-        .select()
+        .select('id, name, title, specialty, cv, photo_url, order, created_at, updated_at')
 
       if (error) {
         console.error('❌ Erro do Supabase:', error)
@@ -326,7 +327,7 @@ export default function AdminPage() {
         await supabase
           .from('professionals')
           .update({ order: currentOrder })
-          .eq('id', current.id)
+          .eq('id', updatedCurrent.id)
         throw error2
       }
 
@@ -509,9 +510,10 @@ export default function AdminPage() {
         .getPublicUrl(filePath)
 
       // Atualizar profissional com a URL da foto
+      // IMPORTANTE: A base de dados usa 'photo_url', não 'photo'
       const { error: updateError } = await supabase
         .from('professionals')
-        .update({ photo: data.publicUrl })
+        .update({ photo_url: data.publicUrl })
         .eq('id', id)
 
       if (updateError) {
