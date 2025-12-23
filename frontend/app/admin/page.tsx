@@ -14,6 +14,7 @@ interface Professional {
   photo?: string
   image?: string
   foto?: string
+  order?: number  // Campo para ordenação
 }
 
 export default function AdminPage() {
@@ -47,6 +48,7 @@ export default function AdminPage() {
       const { data, error } = await supabase
         .from('professionals')
         .select('*')
+        .order('order', { ascending: true, nullsFirst: false })
         .order('id', { ascending: true })
 
       console.log('📊 Resposta do Supabase:', { data, error })
@@ -76,9 +78,16 @@ export default function AdminPage() {
 
   const handleCreate = async () => {
     try {
+      // Obter o maior order atual ou usar o número de profissionais + 1
+      const maxOrder = professionals.length > 0 
+        ? Math.max(...professionals.map(p => p.order ?? p.id), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
       const { error } = await supabase
         .from('professionals')
-        .insert([formData])
+        .insert([{ ...formData, order: newOrder }])
 
       if (error) {
         throw error
@@ -133,6 +142,74 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Erro ao excluir profissional:', error)
       alert('Erro ao excluir profissional')
+    }
+  }
+
+  // Função para mover profissional para cima
+  const moveUp = async (index: number) => {
+    if (index === 0) return // Já está no topo
+
+    const current = professionals[index]
+    const previous = professionals[index - 1]
+
+    try {
+      // Trocar as ordens
+      const currentOrder = current.order ?? current.id
+      const previousOrder = previous.order ?? previous.id
+
+      // Atualizar ambos os profissionais
+      const { error: error1 } = await supabase
+        .from('professionals')
+        .update({ order: previousOrder })
+        .eq('id', current.id)
+
+      if (error1) throw error1
+
+      const { error: error2 } = await supabase
+        .from('professionals')
+        .update({ order: currentOrder })
+        .eq('id', previous.id)
+
+      if (error2) throw error2
+
+      await fetchProfessionals()
+    } catch (error) {
+      console.error('Erro ao mover profissional:', error)
+      alert('Erro ao alterar ordem do profissional')
+    }
+  }
+
+  // Função para mover profissional para baixo
+  const moveDown = async (index: number) => {
+    if (index === professionals.length - 1) return // Já está no final
+
+    const current = professionals[index]
+    const next = professionals[index + 1]
+
+    try {
+      // Trocar as ordens
+      const currentOrder = current.order ?? current.id
+      const nextOrder = next.order ?? next.id
+
+      // Atualizar ambos os profissionais
+      const { error: error1 } = await supabase
+        .from('professionals')
+        .update({ order: nextOrder })
+        .eq('id', current.id)
+
+      if (error1) throw error1
+
+      const { error: error2 } = await supabase
+        .from('professionals')
+        .update({ order: currentOrder })
+        .eq('id', next.id)
+
+      if (error2) throw error2
+
+      await fetchProfessionals()
+    } catch (error) {
+      console.error('Erro ao mover profissional:', error)
+      alert('Erro ao alterar ordem do profissional')
     }
   }
 
@@ -234,7 +311,7 @@ export default function AdminPage() {
       <div className="container mx-auto max-w-6xl">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-white">
-          Gestão de <span className="text-robinhood-green">Profissionais</span>
+            Gestão de <span className="text-robinhood-green">Profissionais</span>
           </h1>
           {!isCreating && (
             <button
@@ -395,6 +472,35 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="flex items-start gap-6">
+                    {/* Botões de Ordenação */}
+                    <div className="flex flex-col gap-2 justify-center">
+                      <button
+                        onClick={() => moveUp(index)}
+                        disabled={index === 0}
+                        className={`p-2 rounded-lg transition-colors ${
+                          index === 0
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-600 text-white hover:bg-gray-500'
+                        }`}
+                        title="Mover para cima"
+                        aria-label="Mover para cima"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => moveDown(index)}
+                        disabled={index === professionals.length - 1}
+                        className={`p-2 rounded-lg transition-colors ${
+                          index === professionals.length - 1
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            : 'bg-gray-600 text-white hover:bg-gray-500'
+                        }`}
+                        title="Mover para baixo"
+                        aria-label="Mover para baixo"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </div>
                     <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-robinhood-green flex-shrink-0 bg-robinhood-border flex items-center justify-center">
                       {imagemUrl ? (
                         <img
