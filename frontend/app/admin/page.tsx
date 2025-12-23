@@ -551,19 +551,23 @@ export default function AdminPage() {
                           type="text"
                           value={formData.name || ''}
                           onChange={(e) => {
+                            e.stopPropagation()
                             const newValue = e.target.value
                             console.log('✏️ Nome alterado:', newValue)
                             setFormData(prev => ({ ...prev, name: newValue }))
                           }}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          onKeyUp={(e) => e.stopPropagation()}
                           onFocus={(e) => {
+                            e.stopPropagation()
                             console.log('🔵 Campo Nome focado')
                             e.target.select()
                           }}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
                           placeholder="Nome completo"
                           autoComplete="off"
-                          readOnly={false}
-                          disabled={false}
+                          style={{ pointerEvents: 'auto', userSelect: 'text' }}
                         />
                       </div>
                       <div>
@@ -572,19 +576,23 @@ export default function AdminPage() {
                           type="text"
                           value={formData.title || ''}
                           onChange={(e) => {
+                            e.stopPropagation()
                             const newValue = e.target.value
                             console.log('✏️ Título alterado:', newValue)
                             setFormData(prev => ({ ...prev, title: newValue }))
                           }}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          onKeyUp={(e) => e.stopPropagation()}
                           onFocus={(e) => {
+                            e.stopPropagation()
                             console.log('🔵 Campo Título focado')
                             e.target.select()
                           }}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
                           placeholder="Ex: Médica Psiquiatra"
                           autoComplete="off"
-                          readOnly={false}
-                          disabled={false}
+                          style={{ pointerEvents: 'auto', userSelect: 'text' }}
                         />
                       </div>
                     </div>
@@ -594,19 +602,23 @@ export default function AdminPage() {
                         type="text"
                         value={formData.speciality || ''}
                         onChange={(e) => {
+                          e.stopPropagation()
                           const newValue = e.target.value
                           console.log('✏️ Especialidade alterada:', newValue)
                           setFormData(prev => ({ ...prev, speciality: newValue }))
                         }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onKeyUp={(e) => e.stopPropagation()}
                         onFocus={(e) => {
+                          e.stopPropagation()
                           console.log('🔵 Campo Especialidade focado')
                           e.target.select()
                         }}
+                        onClick={(e) => e.stopPropagation()}
                         className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
                         placeholder="Ex: Psiquiatria"
                         autoComplete="off"
-                        readOnly={false}
-                        disabled={false}
+                        style={{ pointerEvents: 'auto', userSelect: 'text' }}
                       />
                     </div>
                     <div>
@@ -614,18 +626,22 @@ export default function AdminPage() {
                       <textarea
                         value={formData.description || ''}
                         onChange={(e) => {
+                          e.stopPropagation()
                           const newValue = e.target.value
                           console.log('✏️ Descrição alterada:', newValue)
                           setFormData(prev => ({ ...prev, description: newValue }))
                         }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onKeyUp={(e) => e.stopPropagation()}
                         onFocus={(e) => {
+                          e.stopPropagation()
                           console.log('🔵 Campo Descrição focado')
                         }}
+                        onClick={(e) => e.stopPropagation()}
                         rows={4}
                         className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green resize-y"
                         placeholder="Descrição ou currículo completo do profissional..."
-                        readOnly={false}
-                        disabled={false}
+                        style={{ pointerEvents: 'auto', userSelect: 'text' }}
                       />
                     </div>
                     <div>
@@ -637,18 +653,22 @@ export default function AdminPage() {
                         placeholder="https://exemplo.com/imagem.jpg"
                         value={formData.photo || ''}
                         onChange={(e) => {
+                          e.stopPropagation()
                           const newValue = e.target.value
                           console.log('✏️ URL da foto alterada:', newValue)
                           setFormData(prev => ({ ...prev, photo: newValue }))
                         }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onKeyUp={(e) => e.stopPropagation()}
                         onFocus={(e) => {
+                          e.stopPropagation()
                           console.log('🔵 Campo URL da Foto focado')
                           e.target.select()
                         }}
+                        onClick={(e) => e.stopPropagation()}
                         className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
                         autoComplete="off"
-                        readOnly={false}
-                        disabled={false}
+                        style={{ pointerEvents: 'auto', userSelect: 'text' }}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
@@ -684,7 +704,15 @@ export default function AdminPage() {
                             alert('Este profissional já está no topo!')
                             return
                           }
-                          await moveUp(index)
+                          if (movingProfessional === professional.id) {
+                            console.log('⚠️ Já está a mover este profissional')
+                            return
+                          }
+                          try {
+                            await moveUp(index)
+                          } catch (error) {
+                            console.error('Erro ao mover:', error)
+                          }
                         }}
                         disabled={index === 0 || movingProfessional === professional.id}
                         className={`p-2 rounded-lg transition-all ${
@@ -692,7 +720,10 @@ export default function AdminPage() {
                             ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
                             : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400 hover:scale-110'
                         }`}
-                        style={{ pointerEvents: index === 0 || movingProfessional === professional.id ? 'none' : 'auto' }}
+                        style={{ 
+                          pointerEvents: index === 0 || movingProfessional === professional.id ? 'none' : 'auto',
+                          cursor: index === 0 || movingProfessional === professional.id ? 'not-allowed' : 'pointer'
+                        }}
                         title={index === 0 ? 'Já está no topo' : 'Mover para cima'}
                         aria-label="Mover para cima"
                       >
@@ -712,7 +743,15 @@ export default function AdminPage() {
                             alert('Este profissional já está no final!')
                             return
                           }
-                          await moveDown(index)
+                          if (movingProfessional === professional.id) {
+                            console.log('⚠️ Já está a mover este profissional')
+                            return
+                          }
+                          try {
+                            await moveDown(index)
+                          } catch (error) {
+                            console.error('Erro ao mover:', error)
+                          }
                         }}
                         disabled={index === professionals.length - 1 || movingProfessional === professional.id}
                         className={`p-2 rounded-lg transition-all ${
@@ -720,7 +759,10 @@ export default function AdminPage() {
                             ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
                             : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400 hover:scale-110'
                         }`}
-                        style={{ pointerEvents: index === professionals.length - 1 || movingProfessional === professional.id ? 'none' : 'auto' }}
+                        style={{ 
+                          pointerEvents: index === professionals.length - 1 || movingProfessional === professional.id ? 'none' : 'auto',
+                          cursor: index === professionals.length - 1 || movingProfessional === professional.id ? 'not-allowed' : 'pointer'
+                        }}
                         title={index === professionals.length - 1 ? 'Já está no final' : 'Mover para baixo'}
                         aria-label="Mover para baixo"
                       >
