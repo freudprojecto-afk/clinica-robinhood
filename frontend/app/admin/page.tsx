@@ -12,10 +12,10 @@ interface Professional {
   speciality: string
   description?: string
   photo?: string
-  photo_url?: string  // Campo usado no Supabase
+  photo_url?: string
   image?: string
   foto?: string
-  order?: number  // Campo para ordenação
+  order?: number
 }
 
 export default function AdminPage() {
@@ -34,7 +34,6 @@ export default function AdminPage() {
   const [movingProfessional, setMovingProfessional] = useState<number | null>(null)
 
   useEffect(() => {
-    // Verificar se o Supabase está configurado
     console.log('🔧 Verificando configuração do Supabase...')
     console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'NÃO CONFIGURADO')
     console.log('Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Configurado' : 'NÃO CONFIGURADO')
@@ -80,7 +79,6 @@ export default function AdminPage() {
 
   const handleCreate = async () => {
     try {
-      // Obter o maior order atual ou usar o número de profissionais + 1
       const maxOrder = professionals.length > 0 
         ? Math.max(...professionals.map(p => p.order ?? p.id), 0)
         : 0
@@ -109,7 +107,6 @@ export default function AdminPage() {
     try {
       console.log('💾 Atualizando profissional ID:', id, 'com dados:', formData)
       
-      // Preparar dados para atualização (incluir photo_url se photo estiver preenchido)
       const updateData: any = {
         name: formData.name,
         title: formData.title,
@@ -117,10 +114,9 @@ export default function AdminPage() {
         description: formData.description,
       }
       
-      // Atualizar photo_url se photo estiver preenchido
       if (formData.photo) {
         updateData.photo_url = formData.photo
-        updateData.photo = formData.photo  // Manter compatibilidade
+        updateData.photo = formData.photo
       }
 
       console.log('📤 Dados a enviar:', updateData)
@@ -168,15 +164,12 @@ export default function AdminPage() {
     }
   }
 
-  // Função para inicializar ordem se não existir
   const inicializarOrdem = async () => {
     try {
-      // Verificar se algum profissional tem order null ou undefined
       const precisaInicializar = professionals.some(p => p.order === null || p.order === undefined)
       
       if (precisaInicializar) {
         console.log('🔄 Inicializando ordem dos profissionais...')
-        // Atualizar todos os profissionais com ordem baseada no índice atual
         for (let i = 0; i < professionals.length; i++) {
           const order = i + 1
           const { error } = await supabase
@@ -186,7 +179,6 @@ export default function AdminPage() {
           
           if (error) {
             console.warn(`⚠️ Erro ao inicializar ordem para ${professionals[i].name}:`, error)
-            // Se o campo order não existir, continuar sem erro
             if (!error.message.includes('column') && !error.message.includes('order')) {
               throw error
             }
@@ -199,10 +191,9 @@ export default function AdminPage() {
     }
   }
 
-  // Função para mover profissional para cima (alternativa sem campo order)
   const moveUp = async (index: number) => {
     if (index === 0) {
-      console.log('⚠️ Já está no topo')
+      alert('Este profissional já está no topo da lista!')
       return
     }
 
@@ -213,88 +204,70 @@ export default function AdminPage() {
     setMovingProfessional(current.id)
 
     try {
-      // Estratégia: Trocar os IDs temporariamente ou usar uma coluna auxiliar
-      // Como alternativa, vamos tentar atualizar o campo order primeiro
-      // Se falhar, vamos usar uma estratégia diferente
+      await inicializarOrdem()
       
       const currentOrder = current.order ?? (index + 1)
       const previousOrder = previous.order ?? index
 
-      console.log(`📊 Tentando atualizar ordem: ${current.name} (${currentOrder} -> ${previousOrder})`)
+      console.log(`📊 Ordens: atual=${currentOrder}, anterior=${previousOrder}`)
 
-      // Tentar atualizar com campo order
       const { error: error1 } = await supabase
         .from('professionals')
         .update({ order: previousOrder })
         .eq('id', current.id)
 
       if (error1) {
-        // Se o campo order não existir, usar estratégia alternativa
+        console.error('❌ Erro ao atualizar ordem:', error1)
         if (error1.message.includes('column') || error1.message.includes('order') || error1.message.includes('does not exist')) {
-          console.warn('⚠️ Campo order não existe, usando estratégia alternativa')
-          
-          // Estratégia alternativa: Reordenar usando uma atualização em lote
-          // Criar um array com a nova ordem
-          const novaOrdem = [...professionals]
-          const temp = novaOrdem[index]
-          novaOrdem[index] = novaOrdem[index - 1]
-          novaOrdem[index - 1] = temp
-
-          // Atualizar todos os profissionais com uma nova ordem sequencial
-          for (let i = 0; i < novaOrdem.length; i++) {
-            const { error: updateError } = await supabase
-              .from('professionals')
-              .update({ order: i + 1 })
-              .eq('id', novaOrdem[i].id)
-
-            if (updateError && !updateError.message.includes('column') && !updateError.message.includes('order')) {
-              throw updateError
-            }
-          }
-
           alert(
             '⚠️ Campo "order" não encontrado na base de dados!\n\n' +
-            'A ordenação foi aplicada localmente, mas precisa adicionar a coluna "order" no Supabase para persistir.\n\n' +
+            'Por favor, adicione a coluna "order" na tabela "professionals" no Supabase.\n\n' +
             'Passos:\n' +
-            '1. Vá ao Supabase Dashboard\n' +
-            '2. Table Editor > professionals\n' +
-            '3. Clique em "Add Column"\n' +
-            '4. Nome: "order", Tipo: "int8", Nullable: Sim\n' +
-            '5. Clique em "Save"'
+            '1. Vá ao Supabase Dashboard (https://supabase.com)\n' +
+            '2. Selecione o seu projeto\n' +
+            '3. Vá a "Table Editor" > "professionals"\n' +
+            '4. Clique em "Add Column"\n' +
+            '5. Nome: "order"\n' +
+            '6. Tipo: "int8" ou "integer"\n' +
+            '7. Nullable: Sim (marcar)\n' +
+            '8. Clique em "Save"\n\n' +
+            'Depois disso, recarregue a página e tente novamente!'
           )
         } else {
-          alert(`Erro ao atualizar ordem: ${error1.message}`)
-          throw error1
+          alert(`Erro: ${error1.message}\n\nVerifique a consola (F12) para mais detalhes.`)
         }
-      } else {
-        // Se o update funcionou, atualizar o outro profissional
-        const { error: error2 } = await supabase
-          .from('professionals')
-          .update({ order: currentOrder })
-          .eq('id', previous.id)
-
-        if (error2) {
-          console.error('❌ Erro ao atualizar profissional anterior:', error2)
-          throw error2
-        }
-
-        console.log('✅ Ordem atualizada com sucesso!')
+        throw error1
       }
 
+      const { error: error2 } = await supabase
+        .from('professionals')
+        .update({ order: currentOrder })
+        .eq('id', previous.id)
+
+      if (error2) {
+        console.error('❌ Erro ao atualizar profissional anterior:', error2)
+        await supabase
+          .from('professionals')
+          .update({ order: currentOrder })
+          .eq('id', current.id)
+        throw error2
+      }
+
+      console.log('✅ Ordem atualizada com sucesso!')
+      alert(`✅ ${current.name} movido para cima com sucesso!`)
       await fetchProfessionals()
     } catch (error) {
       console.error('❌ Erro ao mover profissional:', error)
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
-      alert(`Erro ao alterar ordem: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
+      alert(`Erro ao alterar ordem: ${errorMsg}`)
     } finally {
       setMovingProfessional(null)
     }
   }
 
-  // Função para mover profissional para baixo (alternativa sem campo order)
   const moveDown = async (index: number) => {
     if (index === professionals.length - 1) {
-      console.log('⚠️ Já está no final')
+      alert('Este profissional já está no final da lista!')
       return
     }
 
@@ -305,74 +278,62 @@ export default function AdminPage() {
     setMovingProfessional(current.id)
 
     try {
+      await inicializarOrdem()
+      
       const currentOrder = current.order ?? (index + 1)
       const nextOrder = next.order ?? (index + 2)
 
-      console.log(`📊 Tentando atualizar ordem: ${current.name} (${currentOrder} -> ${nextOrder})`)
+      console.log(`📊 Ordens: atual=${currentOrder}, próximo=${nextOrder}`)
 
-      // Tentar atualizar com campo order
       const { error: error1 } = await supabase
         .from('professionals')
         .update({ order: nextOrder })
         .eq('id', current.id)
 
       if (error1) {
-        // Se o campo order não existir, usar estratégia alternativa
+        console.error('❌ Erro ao atualizar ordem:', error1)
         if (error1.message.includes('column') || error1.message.includes('order') || error1.message.includes('does not exist')) {
-          console.warn('⚠️ Campo order não existe, usando estratégia alternativa')
-          
-          // Estratégia alternativa: Reordenar usando uma atualização em lote
-          const novaOrdem = [...professionals]
-          const temp = novaOrdem[index]
-          novaOrdem[index] = novaOrdem[index + 1]
-          novaOrdem[index + 1] = temp
-
-          // Atualizar todos os profissionais com uma nova ordem sequencial
-          for (let i = 0; i < novaOrdem.length; i++) {
-            const { error: updateError } = await supabase
-              .from('professionals')
-              .update({ order: i + 1 })
-              .eq('id', novaOrdem[i].id)
-
-            if (updateError && !updateError.message.includes('column') && !updateError.message.includes('order')) {
-              throw updateError
-            }
-          }
-
           alert(
             '⚠️ Campo "order" não encontrado na base de dados!\n\n' +
-            'A ordenação foi aplicada localmente, mas precisa adicionar a coluna "order" no Supabase para persistir.\n\n' +
+            'Por favor, adicione a coluna "order" na tabela "professionals" no Supabase.\n\n' +
             'Passos:\n' +
-            '1. Vá ao Supabase Dashboard\n' +
-            '2. Table Editor > professionals\n' +
-            '3. Clique em "Add Column"\n' +
-            '4. Nome: "order", Tipo: "int8", Nullable: Sim\n' +
-            '5. Clique em "Save"'
+            '1. Vá ao Supabase Dashboard (https://supabase.com)\n' +
+            '2. Selecione o seu projeto\n' +
+            '3. Vá a "Table Editor" > "professionals"\n' +
+            '4. Clique em "Add Column"\n' +
+            '5. Nome: "order"\n' +
+            '6. Tipo: "int8" ou "integer"\n' +
+            '7. Nullable: Sim (marcar)\n' +
+            '8. Clique em "Save"\n\n' +
+            'Depois disso, recarregue a página e tente novamente!'
           )
         } else {
-          alert(`Erro ao atualizar ordem: ${error1.message}`)
-          throw error1
+          alert(`Erro: ${error1.message}\n\nVerifique a consola (F12) para mais detalhes.`)
         }
-      } else {
-        // Se o update funcionou, atualizar o outro profissional
-        const { error: error2 } = await supabase
-          .from('professionals')
-          .update({ order: currentOrder })
-          .eq('id', next.id)
-
-        if (error2) {
-          console.error('❌ Erro ao atualizar próximo profissional:', error2)
-          throw error2
-        }
-
-        console.log('✅ Ordem atualizada com sucesso!')
+        throw error1
       }
 
+      const { error: error2 } = await supabase
+        .from('professionals')
+        .update({ order: currentOrder })
+        .eq('id', next.id)
+
+      if (error2) {
+        console.error('❌ Erro ao atualizar próximo profissional:', error2)
+        await supabase
+          .from('professionals')
+          .update({ order: currentOrder })
+          .eq('id', current.id)
+        throw error2
+      }
+
+      console.log('✅ Ordem atualizada com sucesso!')
+      alert(`✅ ${current.name} movido para baixo com sucesso!`)
       await fetchProfessionals()
     } catch (error) {
       console.error('❌ Erro ao mover profissional:', error)
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
-      alert(`Erro ao alterar ordem: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
+      alert(`Erro ao alterar ordem: ${errorMsg}`)
     } finally {
       setMovingProfessional(null)
     }
@@ -381,7 +342,6 @@ export default function AdminPage() {
   const handlePhotoUpload = async (id: number, file: File) => {
     setUploadingPhoto(id)
     try {
-      // Tentar upload para Supabase Storage (se o bucket existir)
       const fileExt = file.name.split('.').pop()
       const fileName = `${id}-${Math.random()}.${fileExt}`
       const filePath = `professionals/${fileName}`
@@ -391,7 +351,6 @@ export default function AdminPage() {
         .upload(filePath, file)
 
       if (uploadError) {
-        // Se o bucket não existir, mostrar mensagem clara
         alert(
           '⚠️ Upload não disponível\n\n' +
           'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
@@ -407,12 +366,10 @@ export default function AdminPage() {
         throw uploadError
       }
 
-      // Obter URL pública
       const { data } = supabase.storage
         .from('photos')
         .getPublicUrl(filePath)
 
-      // Atualizar profissional com a URL da foto
       const { error: updateError } = await supabase
         .from('professionals')
         .update({ photo: data.publicUrl })
@@ -426,7 +383,6 @@ export default function AdminPage() {
       alert('Foto atualizada com sucesso!')
     } catch (error) {
       console.error('Erro ao fazer upload:', error)
-      // A mensagem já foi mostrada acima se for erro de bucket
       if (error && typeof error === 'object' && 'message' in error && !String(error.message).includes('bucket')) {
         alert('Erro ao fazer upload da foto. Use o botão "Colar URL" (verde) para adicionar uma URL de imagem diretamente.')
       }
@@ -461,12 +417,10 @@ export default function AdminPage() {
     setFormData({ name: '', title: '', speciality: '', description: '', photo: '' })
   }
 
-  // Obter URL da imagem
   const obterImagem = (profissional: Professional) => {
     return profissional.photo_url || profissional.photo || profissional.image || profissional.foto || null
   }
 
-  // Obter iniciais do nome
   const obterIniciais = (nome: string) => {
     const palavras = nome.split(' ').filter(p => p.length > 0)
     if (palavras.length === 0) return '??'
@@ -504,7 +458,6 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Create Form */}
         {isCreating && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -579,7 +532,6 @@ export default function AdminPage() {
           </motion.div>
         )}
 
-        {/* Professionals List */}
         <div className="space-y-4">
           {professionals.map((professional, index) => {
             const imagemUrl = obterImagem(professional)
@@ -599,11 +551,19 @@ export default function AdminPage() {
                           type="text"
                           value={formData.name || ''}
                           onChange={(e) => {
-                            console.log('✏️ Nome alterado:', e.target.value)
-                            setFormData({ ...formData, name: e.target.value })
+                            const newValue = e.target.value
+                            console.log('✏️ Nome alterado:', newValue)
+                            setFormData(prev => ({ ...prev, name: newValue }))
                           }}
-                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green"
+                          onFocus={(e) => {
+                            console.log('🔵 Campo Nome focado')
+                            e.target.select()
+                          }}
+                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
                           placeholder="Nome completo"
+                          autoComplete="off"
+                          readOnly={false}
+                          disabled={false}
                         />
                       </div>
                       <div>
@@ -612,11 +572,19 @@ export default function AdminPage() {
                           type="text"
                           value={formData.title || ''}
                           onChange={(e) => {
-                            console.log('✏️ Título alterado:', e.target.value)
-                            setFormData({ ...formData, title: e.target.value })
+                            const newValue = e.target.value
+                            console.log('✏️ Título alterado:', newValue)
+                            setFormData(prev => ({ ...prev, title: newValue }))
                           }}
-                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green"
+                          onFocus={(e) => {
+                            console.log('🔵 Campo Título focado')
+                            e.target.select()
+                          }}
+                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
                           placeholder="Ex: Médica Psiquiatra"
+                          autoComplete="off"
+                          readOnly={false}
+                          disabled={false}
                         />
                       </div>
                     </div>
@@ -626,11 +594,19 @@ export default function AdminPage() {
                         type="text"
                         value={formData.speciality || ''}
                         onChange={(e) => {
-                          console.log('✏️ Especialidade alterada:', e.target.value)
-                          setFormData({ ...formData, speciality: e.target.value })
+                          const newValue = e.target.value
+                          console.log('✏️ Especialidade alterada:', newValue)
+                          setFormData(prev => ({ ...prev, speciality: newValue }))
                         }}
-                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green"
+                        onFocus={(e) => {
+                          console.log('🔵 Campo Especialidade focado')
+                          e.target.select()
+                        }}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
                         placeholder="Ex: Psiquiatria"
+                        autoComplete="off"
+                        readOnly={false}
+                        disabled={false}
                       />
                     </div>
                     <div>
@@ -638,12 +614,18 @@ export default function AdminPage() {
                       <textarea
                         value={formData.description || ''}
                         onChange={(e) => {
-                          console.log('✏️ Descrição alterada:', e.target.value)
-                          setFormData({ ...formData, description: e.target.value })
+                          const newValue = e.target.value
+                          console.log('✏️ Descrição alterada:', newValue)
+                          setFormData(prev => ({ ...prev, description: newValue }))
+                        }}
+                        onFocus={(e) => {
+                          console.log('🔵 Campo Descrição focado')
                         }}
                         rows={4}
-                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green resize-y"
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green resize-y"
                         placeholder="Descrição ou currículo completo do profissional..."
+                        readOnly={false}
+                        disabled={false}
                       />
                     </div>
                     <div>
@@ -655,10 +637,18 @@ export default function AdminPage() {
                         placeholder="https://exemplo.com/imagem.jpg"
                         value={formData.photo || ''}
                         onChange={(e) => {
-                          console.log('✏️ URL da foto alterada:', e.target.value)
-                          setFormData({ ...formData, photo: e.target.value })
+                          const newValue = e.target.value
+                          console.log('✏️ URL da foto alterada:', newValue)
+                          setFormData(prev => ({ ...prev, photo: newValue }))
                         }}
-                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green"
+                        onFocus={(e) => {
+                          console.log('🔵 Campo URL da Foto focado')
+                          e.target.select()
+                        }}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
+                        autoComplete="off"
+                        readOnly={false}
+                        disabled={false}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
@@ -683,48 +673,59 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="flex items-start gap-6">
-                    {/* Botões de Ordenação */}
                     <div className="flex flex-col gap-2 justify-center">
                       <button
-                        onClick={(e) => {
+                        type="button"
+                        onClick={async (e) => {
                           e.preventDefault()
                           e.stopPropagation()
-                          console.log('🔼 Botão mover para cima clicado para índice:', index)
-                          moveUp(index)
+                          console.log('🔼 Botão mover para cima clicado para índice:', index, 'Profissional:', professional.name)
+                          if (index === 0) {
+                            alert('Este profissional já está no topo!')
+                            return
+                          }
+                          await moveUp(index)
                         }}
                         disabled={index === 0 || movingProfessional === professional.id}
-                        className={`p-2 rounded-lg transition-colors ${
+                        className={`p-2 rounded-lg transition-all ${
                           index === 0 || movingProfessional === professional.id
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400 hover:scale-110'
                         }`}
-                        title="Mover para cima"
+                        style={{ pointerEvents: index === 0 || movingProfessional === professional.id ? 'none' : 'auto' }}
+                        title={index === 0 ? 'Já está no topo' : 'Mover para cima'}
                         aria-label="Mover para cima"
                       >
                         {movingProfessional === professional.id ? (
-                          <span className="text-xs">...</span>
+                          <span className="text-xs animate-pulse">...</span>
                         ) : (
                           <ArrowUp className="w-4 h-4" />
                         )}
                       </button>
                       <button
-                        onClick={(e) => {
+                        type="button"
+                        onClick={async (e) => {
                           e.preventDefault()
                           e.stopPropagation()
-                          console.log('🔽 Botão mover para baixo clicado para índice:', index)
-                          moveDown(index)
+                          console.log('🔽 Botão mover para baixo clicado para índice:', index, 'Profissional:', professional.name)
+                          if (index === professionals.length - 1) {
+                            alert('Este profissional já está no final!')
+                            return
+                          }
+                          await moveDown(index)
                         }}
                         disabled={index === professionals.length - 1 || movingProfessional === professional.id}
-                        className={`p-2 rounded-lg transition-colors ${
+                        className={`p-2 rounded-lg transition-all ${
                           index === professionals.length - 1 || movingProfessional === professional.id
-                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                            : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400'
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400 hover:scale-110'
                         }`}
-                        title="Mover para baixo"
+                        style={{ pointerEvents: index === professionals.length - 1 || movingProfessional === professional.id ? 'none' : 'auto' }}
+                        title={index === professionals.length - 1 ? 'Já está no final' : 'Mover para baixo'}
                         aria-label="Mover para baixo"
                       >
                         {movingProfessional === professional.id ? (
-                          <span className="text-xs">...</span>
+                          <span className="text-xs animate-pulse">...</span>
                         ) : (
                           <ArrowDown className="w-4 h-4" />
                         )}
