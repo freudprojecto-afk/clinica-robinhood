@@ -10,8 +10,8 @@ module.exports = {
       colors: {
         // Nova paleta de cores - Clínica Freud
         'clinica-bg': '#f2f2f0',        // Fundo neutro (não branco)
-        'clinica-primary': '#000000',    // Cabeçalho, títulos, menus, rodapé
-        'clinica-text': '#000000',      // Texto corrido, subtítulos (quase preto)
+        'clinica-primary': '#355a6c',    // Cabeçalho, títulos, menus, rodapé
+        'clinica-text': '#1f2a30',      // Texto corrido, subtítulos (quase preto)
         'clinica-accent': '#e6ded3',    // Submenu, blocos empáticos, testemunhos
         'clinica-menu': '#a68a62',      // Menus (dourado acastanhado)
         'clinica-cta': '#f5b746',       // CTAs (amarelo dourado)
@@ -39,5 +39,3 @@ module.exports = {
   },
   plugins: [],
 }
-
-
