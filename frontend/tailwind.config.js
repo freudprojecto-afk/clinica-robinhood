@@ -8,10 +8,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'robinhood-green': '#00D9A5',
-        'robinhood-dark': '#0A0E27',
-        'robinhood-card': '#131829',
-        'robinhood-border': '#1E2330',
+        // Nova paleta de cores - Clínica Freud
+        'clinica-bg': '#f2f2f0',        // Fundo neutro (não branco)
+        'clinica-primary': '#355a6c',    // Cabeçalho, títulos, menus, rodapé
+        'clinica-text': '#1f2a30',      // Texto corrido, subtítulos
+        'clinica-accent': '#e6ded3',    // Submenu, blocos empáticos, testemunhos
+        'clinica-menu': '#a68a62',      // Menus (dourado acastanhado)
+        'clinica-cta': '#f5b746',       // CTAs (amarelo dourado)
+        // Cores de compatibilidade (mantidas para transição suave)
+        'robinhood-green': '#f5b746',   // Mapeado para CTA
+        'robinhood-dark': '#1f2a30',    // Mapeado para texto escuro
+        'robinhood-card': '#e6ded3',    // Mapeado para accent
+        'robinhood-border': '#355a6c',  // Mapeado para primary
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
@@ -31,5 +39,3 @@ module.exports = {
   },
   plugins: [],
 }
-
-
