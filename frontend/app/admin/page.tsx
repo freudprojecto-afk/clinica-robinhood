@@ -20,6 +20,14 @@ interface Professional {
   order?: number  // Campo para ordenação
 }
 
+interface Service {
+  id: string  // UUID no Supabase
+  title: string
+  description: string
+  image_url?: string  // URL da imagem de fundo
+  order?: number  // Campo para ordenação
+}
+
 export default function AdminPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -42,6 +50,7 @@ export default function AdminPage() {
     console.log('Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Configurado' : 'NÃO CONFIGURADO')
     
     fetchProfessionals()
+    fetchServices()
   }, [])
 
   const fetchProfessionals = async () => {
@@ -533,6 +542,208 @@ export default function AdminPage() {
     }
   }
 
+  // ========== FUNÇÕES PARA SERVIÇOS ==========
+  
+  const fetchServices = async () => {
+    try {
+      setIsLoadingServices(true)
+      console.log('🔍 A buscar serviços do Supabase...')
+      
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, title, description, image_url, order')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('title', { ascending: true })
+
+      console.log('📊 Resposta do Supabase (serviços):', { data, error })
+
+      if (error) {
+        // Se a tabela não existir, criar array vazio
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "services" não existe ainda. Será criada quando adicionar o primeiro serviço.')
+          setServices([])
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao carregar serviços: ${error.message}`)
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} serviços encontrados:`, data)
+        setServices(data)
+      } else {
+        console.warn('⚠️ Nenhum dado retornado do Supabase')
+        setServices([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar serviços:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      // Não mostrar alerta se for apenas porque a tabela não existe
+      if (!errorMessage.includes('does not exist') && !errorMessage.includes('relation')) {
+        alert(`Erro ao carregar serviços: ${errorMessage}`)
+      }
+      setServices([])
+    } finally {
+      setIsLoadingServices(false)
+    }
+  }
+
+  const handleCreateService = async () => {
+    try {
+      const maxOrder = services.length > 0 
+        ? Math.max(...services.map(s => s.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        title: serviceFormData.title || '',
+        description: serviceFormData.description || '',
+        image_url: serviceFormData.image_url || null,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('services')
+        .insert(insertData)
+        .select('id, title, description, image_url, order')
+
+      if (error) {
+        console.error('Erro ao criar serviço:', error)
+        alert(`Erro ao criar serviço: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setServices([...services, data[0]])
+        setServiceFormData({ title: '', description: '', image_url: '' })
+        setIsCreatingService(false)
+        alert('Serviço criado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao criar serviço:', error)
+    }
+  }
+
+  const handleUpdateService = async (id: string) => {
+    try {
+      const updateData: any = {
+        title: serviceFormData.title || '',
+        description: serviceFormData.description || '',
+        image_url: serviceFormData.image_url || null,
+      }
+
+      const { data, error } = await supabase
+        .from('services')
+        .update(updateData)
+        .eq('id', id)
+        .select('id, title, description, image_url, order')
+
+      if (error) {
+        console.error('Erro ao atualizar serviço:', error)
+        alert(`Erro ao atualizar serviço: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setServices(services.map(s => s.id === id ? data[0] : s))
+        setEditingServiceId(null)
+        setServiceFormData({ title: '', description: '', image_url: '' })
+        alert('Serviço atualizado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar serviço:', error)
+    }
+  }
+
+  const handleDeleteService = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este serviço?')) return
+
+    try {
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir serviço:', error)
+        alert(`Erro ao excluir serviço: ${error.message}`)
+        throw error
+      }
+
+      setServices(services.filter(s => s.id !== id))
+      alert('Serviço excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir serviço:', error)
+    }
+  }
+
+  const handleServiceImageUpload = async (id: string, file: File) => {
+    setUploadingServiceImage(id)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${id}-${Math.random()}.${fileExt}`
+      const filePath = `services/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL da Imagem"\n' +
+          '3. Clique em "Salvar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
+        throw uploadError
+      }
+
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      const { error: updateError } = await supabase
+        .from('services')
+        .update({ image_url: data.publicUrl })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('Erro ao atualizar imagem do serviço:', updateError)
+        alert(`Erro ao atualizar imagem: ${updateError.message}`)
+        throw updateError
+      }
+
+      await fetchServices()
+      alert('Imagem do serviço atualizada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem do serviço:', error)
+    } finally {
+      setUploadingServiceImage(null)
+    }
+  }
+
+  const startEditService = (service: Service) => {
+    setEditingServiceId(service.id)
+    setServiceFormData({
+      title: service.title,
+      description: service.description,
+      image_url: service.image_url || '',
+    })
+  }
+
+  const cancelEditService = () => {
+    setEditingServiceId(null)
+    setServiceFormData({ title: '', description: '', image_url: '' })
+  }
+
   const startEdit = (professional: Professional) => {
     console.log('✏️ Iniciando edição de:', professional)
     setEditingId(professional.id)
@@ -579,7 +790,7 @@ export default function AdminPage() {
     return nome.substring(0, 2).toUpperCase()
   }
 
-  if (isLoading) {
+  if (isLoading && activeTab === 'profissionais') {
     return (
       <div className="min-h-screen bg-robinhood-dark flex items-center justify-center">
         <p className="text-white">A carregar...</p>
@@ -587,23 +798,60 @@ export default function AdminPage() {
     )
   }
 
+  if (isLoadingServices && activeTab === 'servicos') {
+    return (
+      <div className="min-h-screen bg-robinhood-dark flex items-center justify-center">
+        <p className="text-white">A carregar serviços...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-robinhood-dark py-12 px-4">
       <div className="container mx-auto max-w-6xl">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-white">
-            Gestão de <span className="text-robinhood-green">Profissionais</span>
-          </h1>
-          {!isCreating && (
+        {/* Tabs para alternar entre Profissionais e Serviços */}
+        <div className="mb-8">
+          <div className="flex gap-4 border-b border-robinhood-border">
             <button
-              onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+              onClick={() => setActiveTab('profissionais')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'profissionais'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
             >
-              <Plus className="w-5 h-5" />
-              Adicionar Profissional
+              Profissionais
             </button>
-          )}
+            <button
+              onClick={() => setActiveTab('servicos')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'servicos'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Serviços
+            </button>
+          </div>
         </div>
+
+        {/* SECÇÃO PROFISSIONAIS */}
+        {activeTab === 'profissionais' && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">
+                Gestão de <span className="text-robinhood-green">Profissionais</span>
+              </h1>
+              {!isCreating && (
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+                >
+                  <Plus className="w-5 h-5" />
+                  Adicionar Profissional
+                </button>
+              )}
+            </div>
 
         {/* Create Form */}
         {isCreating && (
@@ -1047,6 +1295,229 @@ export default function AdminPage() {
               Abra a consola do navegador (F12) para ver os logs de debug.
             </p>
           </div>
+        )}
+          </>
+        )}
+
+        {/* SECÇÃO SERVIÇOS */}
+        {activeTab === 'servicos' && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">
+                Gestão de <span className="text-robinhood-green">Serviços</span>
+              </h1>
+              {!isCreatingService && (
+                <button
+                  onClick={() => setIsCreatingService(true)}
+                  className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+                >
+                  <Plus className="w-5 h-5" />
+                  Adicionar Serviço
+                </button>
+              )}
+            </div>
+
+            {/* Formulário de Criação de Serviço */}
+            {isCreatingService && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-robinhood-card border border-robinhood-border rounded-xl p-6 mb-6"
+              >
+                <h2 className="text-2xl font-bold text-white mb-4">Novo Serviço</h2>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Título do Serviço"
+                    value={serviceFormData.title || ''}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, title: e.target.value })}
+                    className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                  />
+                  <textarea
+                    placeholder="Descrição do Serviço"
+                    value={serviceFormData.description || ''}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, description: e.target.value })}
+                    rows={3}
+                    className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                  />
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      URL da Imagem de Fundo - Cole aqui a URL da imagem
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://exemplo.com/imagem.jpg"
+                      value={serviceFormData.image_url || ''}
+                      onChange={(e) => setServiceFormData({ ...serviceFormData, image_url: e.target.value })}
+                      className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCreateService}
+                      className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-semibold"
+                    >
+                      <Save className="w-4 h-4" />
+                      Criar Serviço
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsCreatingService(false)
+                        setServiceFormData({ title: '', description: '', image_url: '' })
+                      }}
+                      className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Lista de Serviços */}
+            <div className="space-y-4">
+              {services.map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-robinhood-card border border-robinhood-border rounded-xl p-6"
+                >
+                  {editingServiceId === service.id ? (
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        value={serviceFormData.title || ''}
+                        onChange={(e) => setServiceFormData({ ...serviceFormData, title: e.target.value })}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                        placeholder="Título"
+                      />
+                      <textarea
+                        value={serviceFormData.description || ''}
+                        onChange={(e) => setServiceFormData({ ...serviceFormData, description: e.target.value })}
+                        rows={3}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                        placeholder="Descrição"
+                      />
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">
+                          URL da Imagem de Fundo
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://exemplo.com/imagem.jpg"
+                          value={serviceFormData.image_url || ''}
+                          onChange={(e) => setServiceFormData({ ...serviceFormData, image_url: e.target.value })}
+                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdateService(service.id)}
+                          className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-semibold"
+                        >
+                          <Save className="w-4 h-4" />
+                          Salvar
+                        </button>
+                        <button
+                          onClick={cancelEditService}
+                          className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold"
+                        >
+                          <X className="w-4 h-4" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-6">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-2">{service.title}</h3>
+                        <p className="text-gray-300 mb-4">{service.description}</p>
+                        {service.image_url && (
+                          <div className="mb-4">
+                            <p className="text-sm text-gray-400 mb-2">Imagem de fundo:</p>
+                            <img
+                              src={service.image_url}
+                              alt={service.title}
+                              className="w-full h-32 object-cover rounded-lg"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div className="flex gap-2 flex-wrap">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleServiceImageUpload(service.id, file)
+                              }}
+                              disabled={uploadingServiceImage === service.id}
+                            />
+                            <span className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                              {uploadingServiceImage === service.id ? (
+                                'A fazer upload...'
+                              ) : (
+                                <>
+                                  <Upload className="w-4 h-4" />
+                                  Upload Imagem
+                                </>
+                              )}
+                            </span>
+                          </label>
+                          <button
+                            onClick={() => {
+                              startEditService(service)
+                              alert('💡 Dica: Cole a URL da imagem no campo "URL da Imagem" e clique em "Salvar"')
+                            }}
+                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                            title="Colar URL da imagem diretamente"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Colar URL
+                          </button>
+                          <button
+                            onClick={() => startEditService(service)}
+                            className="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(service.id)}
+                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+
+            {services.length === 0 && !isCreatingService && (
+              <div className="text-center py-12">
+                <p className="text-gray-400 mb-4">Nenhum serviço cadastrado ainda.</p>
+                <p className="text-gray-500 text-sm mb-4">
+                  Clique em "Adicionar Serviço" para começar.
+                </p>
+                <p className="text-gray-500 text-xs">
+                  💡 Nota: A tabela "services" será criada automaticamente no Supabase quando adicionar o primeiro serviço.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
