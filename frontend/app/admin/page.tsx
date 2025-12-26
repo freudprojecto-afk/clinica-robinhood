@@ -43,6 +43,20 @@ export default function AdminPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null)  // UUID é string
   const [movingProfessional, setMovingProfessional] = useState<string | null>(null)  // UUID é string
 
+  // Estados para gestão de serviços
+  const [activeTab, setActiveTab] = useState<'profissionais' | 'servicos'>('profissionais')
+  const [services, setServices] = useState<Service[]>([])
+  const [isLoadingServices, setIsLoadingServices] = useState(true)
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
+  const [isCreatingService, setIsCreatingService] = useState(false)
+  const [serviceFormData, setServiceFormData] = useState<Partial<Service>>({
+    title: '',
+    description: '',
+    image_url: '',
+  })
+  const [uploadingServiceImage, setUploadingServiceImage] = useState<string | null>(null)
+  const [movingService, setMovingService] = useState<string | null>(null)
+
   useEffect(() => {
     // Verificar se o Supabase está configurado
     console.log('🔧 Verificando configuração do Supabase...')
