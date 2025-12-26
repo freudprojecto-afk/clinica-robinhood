@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, ChevronDown, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X } from 'lucide-react'
+import { FileText, ChevronDown, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 interface Profissional {
@@ -483,52 +483,274 @@ function CorpoClinicoSection() {
 
 // Página principal com todas as secções
 export default function Home() {
+  const [menuAberto, setMenuAberto] = useState(false)
+  const [idiomaAberto, setIdiomaAberto] = useState(false)
+  const [idioma, setIdioma] = useState<'pt' | 'en'>('pt') // Por agora só português
+
+  // Secções disponíveis para o menu "O que oferecemos?"
+  const seccoes = [
+    { id: 'sobre', nome: 'Sobre Nós' },
+    { id: 'servicos', nome: 'Serviços' },
+    { id: 'corpo-clinico', nome: 'Corpo Clínico' },
+    { id: 'depoimentos', nome: 'Depoimentos' },
+    { id: 'blog', nome: 'Blog' },
+    { id: 'seguradoras', nome: 'Seguradoras' },
+    { id: 'faq', nome: 'FAQ' },
+    { id: 'compromisso-etico', nome: 'Compromisso Ético' },
+    { id: 'contactos', nome: 'Contactos' },
+  ]
+
+  const scrollParaSecao = (id: string) => {
+    const elemento = document.getElementById(id)
+    if (elemento) {
+      elemento.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setMenuAberto(false)
+    }
+  }
+
+  // Fechar dropdowns ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.menu-dropdown') && !target.closest('.idioma-dropdown')) {
+        setMenuAberto(false)
+        setIdiomaAberto(false)
+      }
+    }
+
+    if (menuAberto || idiomaAberto) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [menuAberto, idiomaAberto])
+
   return (
     <div className="min-h-screen bg-clinica-bg text-clinica-text">
       {/* 1. HOME - Hero Section Estilo Robinhood */}
       <section id="home" className="relative min-h-screen flex flex-col bg-clinica-bg">
-        {/* Header Fixo - Logo à esquerda, Botão à direita */}
+        {/* Header Fixo - Logo à esquerda, Menus no meio, Botão à direita */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-clinica-bg/95 backdrop-blur-sm border-b border-clinica-accent/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-            {/* Logo Clínica Freud */}
-            <motion.a
-              href="#home"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              {/* Logo placeholder - substituir pela imagem quando disponível */}
-              {/* Por agora: oval moderno estilo da imagem fornecida */}
-              <div className="relative w-14 h-14 sm:w-16 sm:h-16">
-                <div className="absolute inset-0 rounded-full bg-clinica-primary opacity-20 blur-xl"></div>
-                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-clinica-primary to-clinica-menu flex items-center justify-center shadow-lg">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-clinica-bg/20 backdrop-blur-sm flex items-center justify-center">
-                    <span className="text-clinica-bg font-bold text-lg sm:text-xl">CF</span>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              {/* Logo Clínica Freud */}
+              <motion.a
+                href="#home"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                onClick={() => scrollParaSecao('home')}
+              >
+                {/* Logo placeholder - substituir pela imagem quando disponível */}
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16">
+                  <div className="absolute inset-0 rounded-full bg-clinica-primary opacity-20 blur-xl"></div>
+                  <div className="relative w-full h-full rounded-full bg-gradient-to-br from-clinica-primary to-clinica-menu flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-clinica-bg/20 backdrop-blur-sm flex items-center justify-center">
+                      <span className="text-clinica-bg font-bold text-lg sm:text-xl">CF</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <span className="text-xl sm:text-2xl font-bold text-clinica-primary">
-                Clínica <span className="text-clinica-menu">Freud</span>
-              </span>
-            </motion.a>
+                <span className="text-xl sm:text-2xl font-bold text-clinica-primary hidden sm:block">
+                  Clínica <span className="text-clinica-menu">Freud</span>
+                </span>
+              </motion.a>
 
-            {/* Botão Ligue-nos - sempre visível */}
-            <motion.a
-              href="tel:+351916649284"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="flex items-center gap-2 bg-clinica-cta text-clinica-text px-4 py-2 sm:px-6 sm:py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-opacity-90 transition-all shadow-lg hover:shadow-xl hover:scale-105"
-            >
-              <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Ligue-nos</span>
-            </motion.a>
+              {/* Menu Desktop - Centro */}
+              <nav className="hidden md:flex items-center gap-6">
+                {/* Menu "O que oferecemos?" */}
+                <div className="relative menu-dropdown">
+                  <button
+                    onClick={() => {
+                      setMenuAberto(!menuAberto)
+                      setIdiomaAberto(false)
+                    }}
+                    className="flex items-center gap-1 text-clinica-text hover:text-clinica-primary transition-colors font-medium"
+                  >
+                    O que oferecemos?
+                    <ChevronDown className={`w-4 h-4 transition-transform ${menuAberto ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {menuAberto && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full left-0 mt-2 w-56 bg-clinica-bg border border-clinica-primary rounded-lg shadow-xl py-2 z-50"
+                    >
+                      {seccoes.map((seccao) => (
+                        <button
+                          key={seccao.id}
+                          onClick={() => scrollParaSecao(seccao.id)}
+                          className="w-full text-left px-4 py-2 text-clinica-text hover:bg-clinica-accent hover:text-clinica-primary transition-colors"
+                        >
+                          {seccao.nome}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Seletor de Idioma */}
+                <div className="relative idioma-dropdown">
+                  <button
+                    onClick={() => {
+                      setIdiomaAberto(!idiomaAberto)
+                      setMenuAberto(false)
+                    }}
+                    className="flex items-center gap-1 text-clinica-text hover:text-clinica-primary transition-colors font-medium"
+                  >
+                    <Globe className="w-4 h-4" />
+                    <span>{idioma === 'pt' ? 'PT' : 'EN'}</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${idiomaAberto ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {/* Dropdown Idioma */}
+                  {idiomaAberto && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full right-0 mt-2 w-32 bg-clinica-bg border border-clinica-primary rounded-lg shadow-xl py-2 z-50"
+                    >
+                      <button
+                        onClick={() => {
+                          setIdioma('pt')
+                          setIdiomaAberto(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 transition-colors ${
+                          idioma === 'pt' 
+                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
+                            : 'text-clinica-text hover:bg-clinica-accent'
+                        }`}
+                      >
+                        Português
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIdioma('en')
+                          setIdiomaAberto(false)
+                          // Por agora só mostra alerta - tradução será implementada depois
+                          alert('Tradução para inglês será implementada em breve.')
+                        }}
+                        className={`w-full text-left px-4 py-2 transition-colors ${
+                          idioma === 'en' 
+                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
+                            : 'text-clinica-text hover:bg-clinica-accent'
+                        }`}
+                      >
+                        English
+                      </button>
+                    </motion.div>
+                  )}
+                </div>
+              </nav>
+
+              {/* Menu Mobile - Hamburger */}
+              <div className="md:hidden flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setMenuAberto(!menuAberto)
+                    setIdiomaAberto(false)
+                  }}
+                  className="text-clinica-text hover:text-clinica-primary transition-colors"
+                  aria-label="Menu"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Botão Ligue-nos - sempre visível */}
+              <motion.a
+                href="tel:+351916649284"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="flex items-center gap-2 bg-clinica-cta text-clinica-text px-3 py-2 sm:px-6 sm:py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-opacity-90 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+              >
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Ligue-nos</span>
+              </motion.a>
+            </div>
+
+            {/* Menu Mobile Expandido */}
+            {menuAberto && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="md:hidden mt-4 pb-4 border-t border-clinica-accent/20 pt-4"
+              >
+                {/* Menu "O que oferecemos?" Mobile */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => setMenuAberto(!menuAberto)}
+                    className="flex items-center gap-2 text-clinica-text font-semibold mb-2"
+                  >
+                    O que oferecemos?
+                  </button>
+                  <div className="pl-4 space-y-1">
+                    {seccoes.map((seccao) => (
+                      <button
+                        key={seccao.id}
+                        onClick={() => scrollParaSecao(seccao.id)}
+                        className="block w-full text-left px-3 py-2 text-sm text-clinica-text hover:bg-clinica-accent hover:text-clinica-primary rounded transition-colors"
+                      >
+                        {seccao.nome}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Seletor de Idioma Mobile */}
+                <div>
+                  <button
+                    onClick={() => setIdiomaAberto(!idiomaAberto)}
+                    className="flex items-center gap-2 text-clinica-text font-semibold mb-2"
+                  >
+                    <Globe className="w-4 h-4" />
+                    Idioma: {idioma === 'pt' ? 'Português' : 'English'}
+                    <ChevronDown className={`w-4 h-4 transition-transform ${idiomaAberto ? 'rotate-180' : ''}`} />
+                  </button>
+                  {idiomaAberto && (
+                    <div className="pl-4 space-y-1">
+                      <button
+                        onClick={() => {
+                          setIdioma('pt')
+                          setIdiomaAberto(false)
+                        }}
+                        className={`block w-full text-left px-3 py-2 text-sm rounded transition-colors ${
+                          idioma === 'pt' 
+                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
+                            : 'text-clinica-text hover:bg-clinica-accent'
+                        }`}
+                      >
+                        Português
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIdioma('en')
+                          setIdiomaAberto(false)
+                          alert('Tradução para inglês será implementada em breve.')
+                        }}
+                        className={`block w-full text-left px-3 py-2 text-sm rounded transition-colors ${
+                          idioma === 'en' 
+                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
+                            : 'text-clinica-text hover:bg-clinica-accent'
+                        }`}
+                      >
+                        English
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </div>
         </header>
 
         {/* Conteúdo Principal - Centralizado */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-32 md:pt-24 pb-16">
           <div className="max-w-5xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 40 }}
