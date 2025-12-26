@@ -922,27 +922,29 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="relative border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-all shadow-md hover:shadow-lg overflow-hidden group"
-                style={{
-                  backgroundImage: servico.image ? `url(${servico.image})` : 'none',
-                  backgroundColor: servico.image ? 'transparent' : '#e6ded3', // clinica-accent como fallback
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  minHeight: '200px',
-                }}
+                className="bg-clinica-bg border border-clinica-primary rounded-xl overflow-hidden hover:border-clinica-menu transition-all shadow-md hover:shadow-lg group"
               >
-                {/* Overlay escuro para legibilidade do texto */}
+                {/* Imagem separada - parte superior */}
                 {servico.image && (
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 rounded-xl"></div>
+                  <div 
+                    className="w-full h-48 bg-clinica-accent"
+                    style={{
+                      backgroundImage: `url(${servico.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  />
                 )}
                 
-                {/* Conteúdo do card */}
-                <div className="relative z-10 h-full flex flex-col">
-                  <Stethoscope className={`w-10 h-10 mb-4 ${servico.image ? 'text-clinica-bg' : 'text-clinica-primary'}`} />
-                  <h3 className={`text-xl font-bold mb-2 ${servico.image ? 'text-clinica-bg' : 'text-clinica-text'}`}>
-                    {servico.title}
-                  </h3>
-                  <p className={`${servico.image ? 'text-clinica-bg' : 'text-clinica-text'} ${!servico.image && 'opacity-80'}`}>
+                {/* Texto com fundo sólido - parte inferior */}
+                <div className="p-6 bg-clinica-bg">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Stethoscope className="w-8 h-8 text-clinica-primary flex-shrink-0" />
+                    <h3 className="text-xl font-bold text-clinica-text">
+                      {servico.title}
+                    </h3>
+                  </div>
+                  <p className="text-clinica-text opacity-90 leading-relaxed">
                     {servico.desc}
                   </p>
                 </div>
