@@ -508,6 +508,69 @@ export default function Home() {
     }
   }
 
+  // Buscar serviços da base de dados
+  useEffect(() => {
+    async function fetchServices() {
+      try {
+        const { data, error } = await supabase
+          .from('services')
+          .select('id, title, description, image_url, order')
+          .order('order', { ascending: true, nullsFirst: true })
+          .order('title', { ascending: true })
+
+        if (error) {
+          // Se a tabela não existir, usar serviços padrão
+          if (error.message.includes('does not exist') || error.message.includes('relation')) {
+            console.warn('⚠️ Tabela "services" não existe ainda. Usando serviços padrão.')
+            setServices([
+              { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
+              { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
+              { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
+              { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
+              { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
+              { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
+            ])
+            return
+          }
+          console.error('Erro ao buscar serviços:', error)
+          throw error
+        }
+
+        if (data && data.length > 0) {
+          const formattedServices = data.map((s: any) => ({
+            title: s.title || '',
+            desc: s.description || '',
+            image: s.image_url || '',
+          }))
+          setServices(formattedServices)
+        } else {
+          // Se não houver serviços, usar padrão
+          setServices([
+            { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
+            { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
+            { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
+            { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
+            { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
+            { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
+          ])
+        }
+      } catch (error) {
+        console.error('Erro ao buscar serviços:', error)
+        // Usar serviços padrão em caso de erro
+        setServices([
+          { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
+          { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
+          { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
+          { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
+          { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
+          { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
+        ])
+      }
+    }
+
+    fetchServices()
+  }, [])
+
   // Fechar dropdowns ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -851,16 +914,9 @@ export default function Home() {
             <p className="text-lg text-clinica-text">Oferecemos uma gama completa de serviços de saúde mental</p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
-              { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
-              { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
-              { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
-              { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
-              { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
-            ].map((servico, index) => (
+            {services.length > 0 ? services.map((servico, index) => (
               <motion.div
-                key={index}
+                key={`servico-${index}-${servico.title}`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -890,7 +946,11 @@ export default function Home() {
                   </p>
                 </div>
               </motion.div>
-            ))}
+            )) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-clinica-text">A carregar serviços...</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
