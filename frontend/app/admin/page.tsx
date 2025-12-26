@@ -1459,7 +1459,8 @@ export default function AdminPage() {
                               alt={service.title}
                               className="w-full h-32 object-cover rounded-lg"
                               onError={(e) => {
-                                e.target.style.display = 'none'
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
                               }}
                             />
                           </div>
