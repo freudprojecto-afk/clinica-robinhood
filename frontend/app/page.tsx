@@ -927,7 +927,7 @@ export default function Home() {
                 {/* Imagem separada - parte superior */}
                 {servico.image && (
                   <div 
-                    className="w-full h-48 bg-clinica-accent"
+                    className="w-full h-32 bg-clinica-accent"
                     style={{
                       backgroundImage: `url(${servico.image})`,
                       backgroundSize: 'cover',
