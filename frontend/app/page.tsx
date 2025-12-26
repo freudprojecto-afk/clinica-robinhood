@@ -17,6 +17,7 @@ interface Profissional {
   photo_url?: string  // Campo usado no Supabase
   image?: string
   foto?: string
+  order?: number  // Campo para ordenação
 }
 
 // Componente da secção Corpo Clínico
@@ -38,6 +39,7 @@ function CorpoClinicoSection() {
         const { data, error: fetchError } = await supabase
           .from('professionals')
           .select('*')
+          .order('order', { ascending: true, nullsFirst: false })
           .order('id', { ascending: true })
 
         if (fetchError) {
@@ -282,7 +284,8 @@ function CorpoClinicoSection() {
           className="text-center mb-12"
         >
           <h2 className="text-4xl md:text-5xl font-bold mb-4">Corpo Clínico</h2>
-          <p className="text-lg text-gray-300">Conheça nossa equipa de psicólogos e psiquiatras experientes</p>
+          <p className="text-lg text-gray-300 mb-3">Conheça nossa equipa de psicólogos e psiquiatras experientes</p>
+          <p className="text-lg font-semibold text-robinhood-green">Seleccione a especialidade</p>
         </motion.div>
 
         {/* Filtro de Categorias - DROPDOWN */}
