@@ -486,6 +486,7 @@ export default function Home() {
   const [menuAberto, setMenuAberto] = useState(false)
   const [idiomaAberto, setIdiomaAberto] = useState(false)
   const [idioma, setIdioma] = useState<'pt' | 'en'>('pt') // Por agora só português
+  const [services, setServices] = useState<Array<{ title: string; desc: string; image: string }>>([])
 
   // Secções disponíveis para o menu "O que oferecemos?"
   const seccoes = [
