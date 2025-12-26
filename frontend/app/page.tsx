@@ -283,7 +283,7 @@ function CorpoClinicoSection() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Corpo Clínico</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Corpo Clínico</h2>
           <p className="text-lg text-clinica-text mb-3">Conheça nossa equipa de psicólogos e psiquiatras experientes</p>
           <p className="text-lg font-semibold text-clinica-menu">Seleccione a especialidade</p>
         </motion.div>
@@ -485,60 +485,85 @@ function CorpoClinicoSection() {
 export default function Home() {
   return (
     <div className="min-h-screen bg-clinica-bg text-clinica-text">
-      {/* 1. HOME - Hero Section */}
-      <section id="home" className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-        <div className="max-w-7xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 text-clinica-primary">
-              Clínica <span className="text-clinica-menu">Freud</span>
-            </h1>
-            
-            {/* Mensagem principal para SEO */}
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-clinica-text leading-tight max-w-5xl mx-auto">
-              Tratamento de <span className="text-clinica-primary">Burnout</span>, <span className="text-clinica-primary">Ansiedade</span>, <span className="text-clinica-primary">Bullying</span> e Problemas Relacionais em <span className="text-clinica-menu">Lisboa</span> e <span className="text-clinica-menu">Online</span>
-            </h2>
-            
-            <p className="text-xl md:text-2xl text-clinica-text mb-6 max-w-4xl mx-auto font-medium">
-              Na Clínica Freud, ajudamos adultos, jovens e casais a recuperar o equilíbrio emocional com psicólogos e psiquiatras experientes
-            </p>
-            
-            <p className="text-lg md:text-xl text-clinica-primary font-semibold mb-8">
-              Marque já consulta:
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <a 
-                href="tel:+351916649284"
-                className="bg-clinica-cta text-clinica-text px-8 py-4 rounded-lg font-bold text-lg hover:bg-opacity-90 transition-colors shadow-lg hover:shadow-xl"
+      {/* 1. HOME - Hero Section Estilo Robinhood */}
+      <section id="home" className="relative min-h-screen flex flex-col bg-clinica-bg">
+        {/* Header Fixo - Logo à esquerda, Botão à direita */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-clinica-bg/95 backdrop-blur-sm border-b border-clinica-accent/20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+            {/* Logo Clínica Freud */}
+            <motion.a
+              href="#home"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              {/* Logo placeholder - substituir pela imagem quando disponível */}
+              {/* Por agora: oval moderno estilo da imagem fornecida */}
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16">
+                <div className="absolute inset-0 rounded-full bg-clinica-primary opacity-20 blur-xl"></div>
+                <div className="relative w-full h-full rounded-full bg-gradient-to-br from-clinica-primary to-clinica-menu flex items-center justify-center shadow-lg">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-clinica-bg/20 backdrop-blur-sm flex items-center justify-center">
+                    <span className="text-clinica-bg font-bold text-lg sm:text-xl">CF</span>
+                  </div>
+                </div>
+              </div>
+              <span className="text-xl sm:text-2xl font-bold text-clinica-primary">
+                Clínica <span className="text-clinica-menu">Freud</span>
+              </span>
+            </motion.a>
+
+            {/* Botão Ligue-nos - sempre visível */}
+            <motion.a
+              href="tel:+351916649284"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="flex items-center gap-2 bg-clinica-cta text-clinica-text px-4 py-2 sm:px-6 sm:py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-opacity-90 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+            >
+              <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Ligue-nos</span>
+            </motion.a>
+          </div>
+        </header>
+
+        {/* Conteúdo Principal - Centralizado */}
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+          <div className="max-w-5xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="space-y-8"
+            >
+              {/* Mensagem Principal - Grande e Impactante */}
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-clinica-text leading-tight">
+                Tratamento de{' '}
+                <span className="text-clinica-primary">Burnout</span>,{' '}
+                <span className="text-clinica-primary">Ansiedade</span>,{' '}
+                <span className="text-clinica-primary">Bullying</span> e Problemas Relacionais em{' '}
+                <span className="text-clinica-menu">Lisboa</span> e{' '}
+                <span className="text-clinica-menu">Online</span>
+              </h1>
+
+              {/* Botão Agendar Consulta - Estilo Robinhood */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="pt-8"
               >
-                +351 916 649 284
-              </a>
-              <a 
-                href="mailto:consulta@clinicafreud.pt"
-                className="border-2 border-clinica-primary text-clinica-primary px-8 py-4 rounded-lg font-bold text-lg hover:bg-clinica-primary hover:text-clinica-bg transition-colors"
-              >
-                consulta@clinicafreud.pt
-              </a>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-clinica-primary text-clinica-bg px-8 py-4 rounded-lg font-bold text-lg hover:bg-opacity-90 transition-colors shadow-md">
-                Agendar Consulta
-              </button>
-              <button className="border-2 border-clinica-menu text-clinica-menu px-8 py-4 rounded-lg font-bold text-lg hover:bg-clinica-menu hover:text-clinica-bg transition-colors">
-                Saber Mais
-              </button>
-            </div>
-          </motion.div>
+                <button className="bg-clinica-primary text-clinica-bg px-10 py-5 rounded-full font-bold text-lg sm:text-xl hover:bg-opacity-90 transition-all shadow-2xl hover:shadow-3xl hover:scale-105 active:scale-95">
+                  Agendar Consulta
+                </button>
+              </motion.div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
       {/* 2. SOBRE/NÓS */}
-      <section id="sobre" className="py-16 px-4 sm:px-6 lg:px-8 bg-robinhood-card">
+      <section id="sobre" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -642,7 +667,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Depoimentos</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Depoimentos</h2>
             <p className="text-lg text-clinica-text">O que os nossos pacientes dizem sobre nós</p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -693,11 +718,11 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: item * 0.1 }}
-                className="bg-robinhood-card border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors cursor-pointer"
+                className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors cursor-pointer shadow-md hover:shadow-lg"
               >
-                <BookOpen className="w-10 h-10 text-clinica-menu mb-4" />
-                <h3 className="text-xl font-bold mb-2">Artigo de Blog {item}</h3>
-                <p className="text-clinica-text opacity-80 mb-4">Descrição do artigo sobre saúde mental e bem-estar...</p>
+                <BookOpen className="w-10 h-10 text-clinica-primary mb-4" />
+                <h3 className="text-xl font-bold mb-2 text-clinica-text">Artigo de Blog {item}</h3>
+                <p className="text-clinica-text mb-4">Descrição do artigo sobre saúde mental e bem-estar...</p>
                 <button className="text-clinica-menu hover:underline">Ler mais →</button>
               </motion.div>
             ))}
@@ -746,7 +771,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Perguntas Frequentes</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Perguntas Frequentes</h2>
             <p className="text-lg text-clinica-text">Respostas às questões mais comuns</p>
           </motion.div>
           <div className="space-y-4">
@@ -767,8 +792,8 @@ export default function Home() {
                 <div className="flex items-start gap-4">
                   <HelpCircle className="w-6 h-6 text-clinica-primary flex-shrink-0 mt-1" />
                   <div>
-                    <h3 className="text-lg font-bold mb-2 text-clinica-primary">{faq.pergunta}</h3>
-                    <p className="text-clinica-primary opacity-90">{faq.resposta}</p>
+                    <h3 className="text-lg font-bold mb-2 text-clinica-text">{faq.pergunta}</h3>
+                    <p className="text-clinica-text">{faq.resposta}</p>
                   </div>
                 </div>
               </motion.div>
@@ -787,7 +812,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Compromisso Ético</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Compromisso Ético</h2>
             <p className="text-lg text-clinica-text">Os nossos valores e princípios</p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -831,7 +856,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Contactos</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Contactos</h2>
             <p className="text-lg text-clinica-text">Entre em contacto connosco</p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -885,7 +910,7 @@ export default function Home() {
       </section>
 
       {/* 11. DIREITOS E AFINS */}
-      <section id="direitos" className="py-16 px-4 sm:px-6 lg:px-8 bg-robinhood-card">
+      <section id="direitos" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -904,8 +929,8 @@ export default function Home() {
               transition={{ duration: 0.6 }}
               className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 shadow-md"
             >
-              <h3 className="text-2xl font-bold mb-4 text-clinica-primary">Direitos do Paciente</h3>
-              <ul className="space-y-2 text-clinica-primary">
+              <h3 className="text-2xl font-bold mb-4 text-clinica-text">Direitos do Paciente</h3>
+              <ul className="space-y-2 text-clinica-text">
                 <li>• Direito à informação</li>
                 <li>• Direito à confidencialidade</li>
                 <li>• Direito ao consentimento informado</li>
@@ -919,8 +944,8 @@ export default function Home() {
               transition={{ duration: 0.6 }}
               className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 shadow-md"
             >
-              <h3 className="text-2xl font-bold mb-4 text-clinica-primary">Política de Privacidade</h3>
-              <p className="text-clinica-primary leading-relaxed mb-4">
+              <h3 className="text-2xl font-bold mb-4 text-clinica-text">Política de Privacidade</h3>
+              <p className="text-clinica-text leading-relaxed mb-4">
                 Respeitamos a sua privacidade e protegemos os seus dados pessoais de acordo com o RGPD.
               </p>
               <button className="text-clinica-menu hover:underline font-semibold">Ler política completa →</button>
