@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 interface Professional {
@@ -44,7 +44,7 @@ export default function AdminPage() {
   const [movingProfessional, setMovingProfessional] = useState<string | null>(null)  // UUID é string
 
   // Estados para gestão de serviços
-  const [activeTab, setActiveTab] = useState<'profissionais' | 'servicos'>('profissionais')
+  const [activeTab, setActiveTab] = useState<'profissionais' | 'servicos' | 'depoimentos'>('profissionais')
   const [services, setServices] = useState<Service[]>([])
   const [isLoadingServices, setIsLoadingServices] = useState(true)
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
@@ -65,6 +65,7 @@ export default function AdminPage() {
     
     fetchProfessionals()
     fetchServices()
+    fetchTestimonials()
   }, [])
 
   const fetchProfessionals = async () => {
@@ -756,6 +757,197 @@ export default function AdminPage() {
   const cancelEditService = () => {
     setEditingServiceId(null)
     setServiceFormData({ title: '', description: '', image_url: '' })
+  }
+
+  // ========== FUNÇÕES PARA DEPOIMENTOS ==========
+  
+  const fetchTestimonials = async () => {
+    try {
+      setIsLoadingTestimonials(true)
+      console.log('🔍 A buscar depoimentos do Supabase...')
+      
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('id, name, text, rating, order')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: false })
+
+      console.log('📊 Resposta do Supabase (depoimentos):', { data, error })
+
+      if (error) {
+        // Se a tabela não existir, criar array vazio
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "testimonials" não existe ainda. Será criada quando adicionar o primeiro depoimento.')
+          setTestimonials([])
+          setIsLoadingTestimonials(false)
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao carregar depoimentos: ${error.message}`)
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} depoimentos encontrados:`, data)
+        setTestimonials(data)
+      } else {
+        console.warn('⚠️ Nenhum dado retornado do Supabase')
+        setTestimonials([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar depoimentos:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      // Não mostrar alerta se for apenas porque a tabela não existe
+      if (!errorMessage.includes('does not exist') && !errorMessage.includes('relation')) {
+        alert(`Erro ao carregar depoimentos: ${errorMessage}`)
+      }
+      setTestimonials([])
+    } finally {
+      setIsLoadingTestimonials(false)
+    }
+  }
+
+  const handleCreateTestimonial = async () => {
+    try {
+      const maxOrder = testimonials.length > 0 
+        ? Math.max(...testimonials.map(t => t.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        name: testimonialFormData.name || '',
+        text: testimonialFormData.text || '',
+        rating: testimonialFormData.rating || 5,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('testimonials')
+        .insert(insertData)
+        .select('id, name, text, rating, order')
+
+      if (error) {
+        console.error('Erro ao criar depoimento:', error)
+        alert(`Erro ao criar depoimento: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setTestimonials([...testimonials, data[0]])
+        setTestimonialFormData({ name: '', text: '', rating: 5 })
+        setIsCreatingTestimonial(false)
+        alert('Depoimento criado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao criar depoimento:', error)
+    }
+  }
+
+  const handleUpdateTestimonial = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('testimonials')
+        .update({
+          name: testimonialFormData.name || '',
+          text: testimonialFormData.text || '',
+          rating: testimonialFormData.rating || 5,
+        })
+        .eq('id', id)
+        .select('id, name, text, rating, order')
+
+      if (error) {
+        console.error('Erro ao atualizar depoimento:', error)
+        alert(`Erro ao atualizar depoimento: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setTestimonials(testimonials.map(t => t.id === id ? data[0] : t))
+        setEditingTestimonialId(null)
+        setTestimonialFormData({ name: '', text: '', rating: 5 })
+        alert('Depoimento atualizado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar depoimento:', error)
+    }
+  }
+
+  const handleDeleteTestimonial = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este depoimento?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('testimonials')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir depoimento:', error)
+        alert(`Erro ao excluir depoimento: ${error.message}`)
+        throw error
+      }
+
+      setTestimonials(testimonials.filter(t => t.id !== id))
+      alert('Depoimento excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir depoimento:', error)
+    }
+  }
+
+  const startEditTestimonial = (testimonial: Testimonial) => {
+    setEditingTestimonialId(testimonial.id)
+    setTestimonialFormData({
+      name: testimonial.name,
+      text: testimonial.text,
+      rating: testimonial.rating,
+    })
+  }
+
+  const cancelEditTestimonial = () => {
+    setEditingTestimonialId(null)
+    setTestimonialFormData({ name: '', text: '', rating: 5 })
+  }
+
+  const moveTestimonial = async (id: string, direction: 'up' | 'down') => {
+    const index = testimonials.findIndex(t => t.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= testimonials.length) return
+
+    const testimonial = testimonials[index]
+    const otherTestimonial = testimonials[newIndex]
+
+    setMovingTestimonial(id)
+
+    try {
+      // Trocar os valores de order
+      const tempOrder = testimonial.order ?? 0
+      const otherOrder = otherTestimonial.order ?? 0
+
+      await supabase
+        .from('testimonials')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('testimonials')
+        .update({ order: tempOrder })
+        .eq('id', otherTestimonial.id)
+
+      // Atualizar estado local
+      const newTestimonials = [...testimonials]
+      ;[newTestimonials[index], newTestimonials[newIndex]] = [newTestimonials[newIndex], newTestimonials[index]]
+      setTestimonials(newTestimonials)
+    } catch (error) {
+      console.error('Erro ao mover depoimento:', error)
+      alert('Erro ao mover depoimento. Tente novamente.')
+    } finally {
+      setMovingTestimonial(null)
+    }
   }
 
   const startEdit = (professional: Professional) => {
@@ -1531,6 +1723,229 @@ export default function AdminPage() {
                   💡 Nota: A tabela "services" será criada automaticamente no Supabase quando adicionar o primeiro serviço.
                 </p>
               </div>
+            )}
+          </>
+        )}
+
+        {/* SECÇÃO DEPOIMENTOS */}
+        {activeTab === 'depoimentos' && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">
+                Gestão de <span className="text-robinhood-green">Depoimentos</span>
+              </h1>
+              {!isCreatingTestimonial && (
+                <button
+                  onClick={() => setIsCreatingTestimonial(true)}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Adicionar Depoimento
+                </button>
+              )}
+            </div>
+
+            {isLoadingTestimonials ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar depoimentos...</p>
+              </div>
+            ) : (
+              <>
+                {/* Formulário de Criação */}
+                {isCreatingTestimonial && (
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+                    <h2 className="text-2xl font-bold text-white mb-4">Novo Depoimento</h2>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Nome do Paciente
+                        </label>
+                        <input
+                          type="text"
+                          value={testimonialFormData.name || ''}
+                          onChange={(e) =>
+                            setTestimonialFormData({ ...testimonialFormData, name: e.target.value })
+                          }
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                          placeholder="Ex: Maria S."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Depoimento
+                        </label>
+                        <textarea
+                          value={testimonialFormData.text || ''}
+                          onChange={(e) =>
+                            setTestimonialFormData({ ...testimonialFormData, text: e.target.value })
+                          }
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green min-h-[100px]"
+                          placeholder="Ex: Excelente atendimento e profissionais muito competentes."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Avaliação (Estrelas: 1-5)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={testimonialFormData.rating || 5}
+                          onChange={(e) =>
+                            setTestimonialFormData({ ...testimonialFormData, rating: parseInt(e.target.value) || 5 })
+                          }
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCreateTestimonial}
+                          className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          <Save className="w-5 h-5" />
+                          Guardar
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsCreatingTestimonial(false)
+                            setTestimonialFormData({ name: '', text: '', rating: 5 })
+                          }}
+                          className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de Depoimentos */}
+                {testimonials.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400">Nenhum depoimento encontrado. Adicione o primeiro!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {testimonials.map((testimonial, index) => (
+                      <div
+                        key={testimonial.id}
+                        className="bg-gray-800 border border-gray-700 rounded-lg p-6"
+                      >
+                        {editingTestimonialId === testimonial.id ? (
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Nome do Paciente
+                              </label>
+                              <input
+                                type="text"
+                                value={testimonialFormData.name || ''}
+                                onChange={(e) =>
+                                  setTestimonialFormData({ ...testimonialFormData, name: e.target.value })
+                                }
+                                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Depoimento
+                              </label>
+                              <textarea
+                                value={testimonialFormData.text || ''}
+                                onChange={(e) =>
+                                  setTestimonialFormData({ ...testimonialFormData, text: e.target.value })
+                                }
+                                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green min-h-[100px]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Avaliação (Estrelas: 1-5)
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="5"
+                                value={testimonialFormData.rating || 5}
+                                onChange={(e) =>
+                                  setTestimonialFormData({ ...testimonialFormData, rating: parseInt(e.target.value) || 5 })
+                                }
+                                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleUpdateTestimonial(testimonial.id)}
+                                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <Save className="w-5 h-5" />
+                                Guardar
+                              </button>
+                              <button
+                                onClick={cancelEditTestimonial}
+                                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <X className="w-5 h-5" />
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => moveTestimonial(testimonial.id, 'up')}
+                                    disabled={index === 0 || movingTestimonial === testimonial.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowUp className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveTestimonial(testimonial.id, 'down')}
+                                    disabled={index === testimonials.length - 1 || movingTestimonial === testimonial.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowDown className="w-5 h-5" />
+                                  </button>
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="text-xl font-bold text-white mb-2">{testimonial.name}</h3>
+                                  <div className="flex gap-1 mb-2">
+                                    {[...Array(testimonial.rating)].map((_, i) => (
+                                      <Star key={i} className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                                    ))}
+                                  </div>
+                                  <p className="text-gray-300 italic">"{testimonial.text}"</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => startEditTestimonial(testimonial)}
+                                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <Edit className="w-5 h-5" />
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTestimonial(testimonial.id)}
+                                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                                Excluir
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
