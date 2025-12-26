@@ -852,12 +852,12 @@ export default function Home() {
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas' },
-              { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico' },
-              { title: 'Terapia de Casal', desc: 'Apoio especializado para casais' },
-              { title: 'Terapia Familiar', desc: 'Intervenção com toda a família' },
-              { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas' },
-              { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo' },
+              { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
+              { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
+              { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
+              { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
+              { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
+              { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
             ].map((servico, index) => (
               <motion.div
                 key={index}
@@ -865,11 +865,30 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors shadow-md hover:shadow-lg"
+                className="relative border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-all shadow-md hover:shadow-lg overflow-hidden group"
+                style={{
+                  backgroundImage: servico.image ? `url(${servico.image})` : 'none',
+                  backgroundColor: servico.image ? 'transparent' : '#e6ded3', // clinica-accent como fallback
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  minHeight: '200px',
+                }}
               >
-                <Stethoscope className="w-10 h-10 text-clinica-menu mb-4" />
-                <h3 className="text-xl font-bold mb-2">{servico.title}</h3>
-                <p className="text-clinica-text opacity-80">{servico.desc}</p>
+                {/* Overlay escuro para legibilidade do texto */}
+                {servico.image && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 rounded-xl"></div>
+                )}
+                
+                {/* Conteúdo do card */}
+                <div className="relative z-10 h-full flex flex-col">
+                  <Stethoscope className={`w-10 h-10 mb-4 ${servico.image ? 'text-clinica-bg' : 'text-clinica-primary'}`} />
+                  <h3 className={`text-xl font-bold mb-2 ${servico.image ? 'text-clinica-bg' : 'text-clinica-text'}`}>
+                    {servico.title}
+                  </h3>
+                  <p className={`${servico.image ? 'text-clinica-bg' : 'text-clinica-text'} ${!servico.image && 'opacity-80'}`}>
+                    {servico.desc}
+                  </p>
+                </div>
               </motion.div>
             ))}
           </div>
