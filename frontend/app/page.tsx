@@ -28,6 +28,20 @@ interface Testimonial {
   order?: number  // Campo para ordenação
 }
 
+interface AboutSection {
+  id: string
+  main_text: string
+}
+
+interface AboutFeature {
+  id: string
+  title: string
+  description: string
+  icon_name?: string  // Nome do ícone do Lucide React
+  icon_url?: string  // URL de imagem alternativa
+  order?: number
+}
+
 // Componente da secção Corpo Clínico
 function CorpoClinicoSection() {
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
@@ -702,6 +716,168 @@ function DepoimentosSection() {
   )
 }
 
+// Componente da secção Sobre Nós
+function SobreNosSection() {
+  const [mainText, setMainText] = useState<string>('')
+  const [features, setFeatures] = useState<AboutFeature[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Mapeamento de nomes de ícones para componentes
+  const iconMap: { [key: string]: any } = {
+    Users,
+    Heart,
+    Shield,
+    MessageSquare,
+    BookOpen,
+    HelpCircle,
+    Building2,
+    FileCheck,
+    Stethoscope,
+    Clock,
+    Mail,
+    MapPin,
+  }
+
+  // Buscar dados da base de dados
+  useEffect(() => {
+    async function fetchAboutData() {
+      try {
+        setLoading(true)
+        console.log('🔍 A buscar dados da secção Sobre Nós do Supabase...')
+
+        // Buscar texto principal
+        const { data: aboutData, error: aboutError } = await supabase
+          .from('about_section')
+          .select('*')
+          .limit(1)
+          .single()
+
+        // Buscar features (cards)
+        const { data: featuresData, error: featuresError } = await supabase
+          .from('about_features')
+          .select('*')
+          .order('order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
+
+        if (aboutError && !aboutError.message.includes('does not exist') && !aboutError.message.includes('relation')) {
+          console.error('❌ Erro ao buscar texto principal:', aboutError)
+        }
+
+        if (featuresError && !featuresError.message.includes('does not exist') && !featuresError.message.includes('relation')) {
+          console.error('❌ Erro ao buscar features:', featuresError)
+        }
+
+        // Se as tabelas não existirem, usar dados padrão
+        if (aboutError && (aboutError.message.includes('does not exist') || aboutError.message.includes('relation'))) {
+          console.warn('⚠️ Tabela "about_section" não existe ainda. Usando texto padrão.')
+          setMainText('A Clínica Freud é uma clínica especializada em saúde mental, dedicada a proporcionar cuidados de excelência através de uma equipa multidisciplinar de psicólogos e psiquiatras experientes.')
+        } else if (aboutData) {
+          setMainText(aboutData.main_text || '')
+        }
+
+        if (featuresError && (featuresError.message.includes('does not exist') || featuresError.message.includes('relation'))) {
+          console.warn('⚠️ Tabela "about_features" não existe ainda. Usando features padrão.')
+          setFeatures([
+            { id: '1', title: 'Equipa Experiente', description: 'Profissionais altamente qualificados e certificados', icon_name: 'Users', order: 1 },
+            { id: '2', title: 'Cuidado Personalizado', description: 'Acompanhamento individualizado para cada paciente', icon_name: 'Heart', order: 2 },
+            { id: '3', title: 'Confidencialidade', description: 'Total privacidade e sigilo profissional', icon_name: 'Shield', order: 3 },
+          ])
+        } else if (featuresData && featuresData.length > 0) {
+          setFeatures(featuresData)
+        } else {
+          // Fallback para dados padrão se não houver dados
+          setFeatures([
+            { id: '1', title: 'Equipa Experiente', description: 'Profissionais altamente qualificados e certificados', icon_name: 'Users', order: 1 },
+            { id: '2', title: 'Cuidado Personalizado', description: 'Acompanhamento individualizado para cada paciente', icon_name: 'Heart', order: 2 },
+            { id: '3', title: 'Confidencialidade', description: 'Total privacidade e sigilo profissional', icon_name: 'Shield', order: 3 },
+          ])
+        }
+      } catch (err) {
+        console.error('❌ Erro ao buscar dados da secção Sobre Nós:', err)
+        // Usar dados padrão em caso de erro
+        setMainText('A Clínica Freud é uma clínica especializada em saúde mental, dedicada a proporcionar cuidados de excelência através de uma equipa multidisciplinar de psicólogos e psiquiatras experientes.')
+        setFeatures([
+          { id: '1', title: 'Equipa Experiente', description: 'Profissionais altamente qualificados e certificados', icon_name: 'Users', order: 1 },
+          { id: '2', title: 'Cuidado Personalizado', description: 'Acompanhamento individualizado para cada paciente', icon_name: 'Heart', order: 2 },
+          { id: '3', title: 'Confidencialidade', description: 'Total privacidade e sigilo profissional', icon_name: 'Shield', order: 3 },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAboutData()
+  }, [])
+
+  // Função para renderizar o ícone
+  const renderIcon = (feature: AboutFeature) => {
+    if (feature.icon_url) {
+      return (
+        <img
+          src={feature.icon_url}
+          alt={feature.title}
+          className="w-12 h-12 mx-auto mb-4 object-contain"
+        />
+      )
+    }
+
+    if (feature.icon_name && iconMap[feature.icon_name]) {
+      const IconComponent = iconMap[feature.icon_name]
+      return <IconComponent className="w-12 h-12 text-clinica-primary mx-auto mb-4" />
+    }
+
+    // Fallback: ícone padrão
+    return <HelpCircle className="w-12 h-12 text-clinica-primary mx-auto mb-4" />
+  }
+
+  return (
+    <section id="sobre" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Sobre Nós</h2>
+          {loading ? (
+            <p className="text-lg text-clinica-text max-w-3xl mx-auto font-medium">
+              A carregar...
+            </p>
+          ) : (
+            <p className="text-lg text-clinica-text max-w-3xl mx-auto font-medium">
+              {mainText || 'A Clínica Freud é uma clínica especializada em saúde mental, dedicada a proporcionar cuidados de excelência através de uma equipa multidisciplinar de psicólogos e psiquiatras experientes.'}
+            </p>
+          )}
+        </motion.div>
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-clinica-text opacity-70">A carregar...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 text-center shadow-md"
+              >
+                {renderIcon(feature)}
+                <h3 className="text-xl font-bold mb-2 text-clinica-text">{feature.title}</h3>
+                <p className="text-clinica-text">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // Página principal com todas as secções
 export default function Home() {
   const [menuAberto, setMenuAberto] = useState(false)
@@ -1088,57 +1264,7 @@ export default function Home() {
       </section>
 
       {/* 2. SOBRE/NÓS */}
-      <section id="sobre" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Sobre Nós</h2>
-            <p className="text-lg text-clinica-text max-w-3xl mx-auto font-medium">
-              A Clínica Freud é uma clínica especializada em saúde mental, dedicada a proporcionar cuidados de excelência através de uma equipa multidisciplinar de psicólogos e psiquiatras experientes.
-            </p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-            >
-              <Users className="w-12 h-12 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Equipa Experiente</h3>
-              <p className="text-clinica-text">Profissionais altamente qualificados e certificados</p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-            >
-              <Heart className="w-12 h-12 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Cuidado Personalizado</h3>
-              <p className="text-clinica-text">Acompanhamento individualizado para cada paciente</p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-            >
-              <Shield className="w-12 h-12 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Confidencialidade</h3>
-              <p className="text-clinica-text">Total privacidade e sigilo profissional</p>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+      <SobreNosSection />
 
       {/* 3. SERVIÇOS */}
       <section id="servicos" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
