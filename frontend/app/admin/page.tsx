@@ -28,6 +28,14 @@ interface Service {
   order?: number  // Campo para ordenação
 }
 
+interface Testimonial {
+  id: string  // UUID no Supabase
+  name: string
+  text: string
+  rating: number  // 1-5 estrelas
+  order?: number  // Campo para ordenação
+}
+
 export default function AdminPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -56,6 +64,18 @@ export default function AdminPage() {
   })
   const [uploadingServiceImage, setUploadingServiceImage] = useState<string | null>(null)
   const [movingService, setMovingService] = useState<string | null>(null)
+
+  // Estados para gestão de depoimentos
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [isLoadingTestimonials, setIsLoadingTestimonials] = useState(true)
+  const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null)
+  const [isCreatingTestimonial, setIsCreatingTestimonial] = useState(false)
+  const [testimonialFormData, setTestimonialFormData] = useState<Partial<Testimonial>>({
+    name: '',
+    text: '',
+    rating: 5,
+  })
+  const [movingTestimonial, setMovingTestimonial] = useState<string | null>(null)
 
   useEffect(() => {
     // Verificar se o Supabase está configurado
