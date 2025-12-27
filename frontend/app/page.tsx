@@ -822,13 +822,13 @@ export default function Home() {
             allow="autoplay; encrypted-media"
             allowFullScreen
             style={{
-              opacity: 0.3, // Esbatido (30% de opacidade)
-              filter: 'brightness(0.7)', // Escurecer um pouco para melhor contraste
+              opacity: 0.5, // Esbatido (50% de opacidade - aumentado para mais visibilidade)
+              filter: 'brightness(0.85) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
               pointerEvents: 'none', // Não interferir com cliques
             }}
           />
           {/* Overlay escuro adicional para garantir legibilidade do texto */}
-          <div className="absolute inset-0 bg-clinica-bg/40"></div>
+          <div className="absolute inset-0 bg-clinica-bg/30"></div>
         </div>
 
         {/* Header Fixo - Logo à esquerda, Menus no meio, Botão à direita */}
