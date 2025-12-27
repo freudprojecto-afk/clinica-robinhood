@@ -1035,7 +1035,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-robinhood-dark py-12 px-4">
       <div className="container mx-auto max-w-6xl">
-        {/* Tabs para alternar entre Profissionais e Serviços */}
+        {/* Tabs para alternar entre Profissionais, Serviços e Depoimentos */}
         <div className="mb-8">
           <div className="flex gap-4 border-b border-robinhood-border">
             <button
@@ -1057,6 +1057,16 @@ export default function AdminPage() {
               }`}
             >
               Serviços
+            </button>
+            <button
+              onClick={() => setActiveTab('depoimentos')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'depoimentos'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Depoimentos
             </button>
           </div>
         </div>
