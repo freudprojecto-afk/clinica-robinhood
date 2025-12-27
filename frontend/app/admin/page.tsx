@@ -106,6 +106,7 @@ export default function AdminPage() {
     icon_url: '',
   })
   const [movingFeature, setMovingFeature] = useState<string | null>(null)
+  const [uploadingFeatureImage, setUploadingFeatureImage] = useState<string | null>(null)
 
   useEffect(() => {
     // Verificar se o Supabase está configurado
@@ -1214,6 +1215,57 @@ export default function AdminPage() {
   const cancelEditFeature = () => {
     setEditingFeatureId(null)
     setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+  }
+
+  const handleFeatureImageUpload = async (id: string, file: File) => {
+    setUploadingFeatureImage(id)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `feature-${id}-${Math.random()}.${fileExt}`
+      const filePath = `about-features/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL da Imagem"\n' +
+          '3. Clique em "Guardar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
+        throw uploadError
+      }
+
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      const { error: updateError } = await supabase
+        .from('about_features')
+        .update({ icon_url: data.publicUrl })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('Erro ao atualizar imagem da feature:', updateError)
+        alert(`Erro ao atualizar imagem: ${updateError.message}`)
+        throw updateError
+      }
+
+      await fetchAboutFeatures()
+      alert('Imagem da característica atualizada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem da feature:', error)
+    } finally {
+      setUploadingFeatureImage(null)
+    }
   }
 
   const moveFeature = async (id: string, direction: 'up' | 'down') => {
@@ -2414,21 +2466,47 @@ export default function AdminPage() {
                                 onChange={(e) => setFeatureFormData({ ...featureFormData, description: e.target.value })}
                                 className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green min-h-[60px] text-sm"
                               />
-                              <div className="grid grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  placeholder="Nome do Ícone"
-                                  value={featureFormData.icon_name || ''}
-                                  onChange={(e) => setFeatureFormData({ ...featureFormData, icon_name: e.target.value })}
-                                  className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="OU URL da Imagem"
-                                  value={featureFormData.icon_url || ''}
-                                  onChange={(e) => setFeatureFormData({ ...featureFormData, icon_url: e.target.value })}
-                                  className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
-                                />
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Nome do Ícone"
+                                    value={featureFormData.icon_name || ''}
+                                    onChange={(e) => setFeatureFormData({ ...featureFormData, icon_name: e.target.value })}
+                                    className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="OU URL da Imagem"
+                                    value={featureFormData.icon_url || ''}
+                                    onChange={(e) => setFeatureFormData({ ...featureFormData, icon_url: e.target.value })}
+                                    className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <label className="cursor-pointer flex-1">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) handleFeatureImageUpload(feature.id, file)
+                                      }}
+                                      disabled={uploadingFeatureImage === feature.id}
+                                    />
+                                    <span className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
+                                      {uploadingFeatureImage === feature.id ? (
+                                        'A fazer upload...'
+                                      ) : (
+                                        <>
+                                          <Upload className="w-4 h-4" />
+                                          Fazer Upload de Imagem
+                                        </>
+                                      )}
+                                    </span>
+                                  </label>
+                                </div>
                               </div>
                               <div className="flex gap-2">
                                 <button
@@ -2470,12 +2548,25 @@ export default function AdminPage() {
                                   <div className="flex-1">
                                     <h3 className="text-white font-semibold mb-1">{feature.title}</h3>
                                     <p className="text-gray-300 text-sm">{feature.description}</p>
+                                    {feature.icon_url && (
+                                      <div className="mt-2 mb-2">
+                                        <img
+                                          src={feature.icon_url}
+                                          alt={feature.title}
+                                          className="w-20 h-20 object-cover rounded-lg border border-gray-600"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement
+                                            target.style.display = 'none'
+                                          }}
+                                        />
+                                      </div>
+                                    )}
                                     <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
                                       {feature.icon_name && (
                                         <span className="bg-gray-600 px-2 py-1 rounded">Ícone: {feature.icon_name}</span>
                                       )}
                                       {feature.icon_url && (
-                                        <span className="bg-gray-600 px-2 py-1 rounded">Imagem URL</span>
+                                        <span className="bg-purple-600 px-2 py-1 rounded">Imagem Carregada</span>
                                       )}
                                     </div>
                                   </div>
