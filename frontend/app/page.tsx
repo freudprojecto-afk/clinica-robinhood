@@ -20,6 +20,14 @@ interface Profissional {
   order?: number  // Campo para ordenação
 }
 
+interface Testimonial {
+  id: string  // UUID no Supabase
+  name: string
+  text: string
+  rating: number  // 1-5 estrelas
+  order?: number  // Campo para ordenação
+}
+
 // Componente da secção Corpo Clínico
 function CorpoClinicoSection() {
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
