@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star } from 'lucide-react'
+import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Professional {
@@ -34,6 +34,20 @@ interface Testimonial {
   text: string
   rating: number  // 1-5 estrelas
   order?: number  // Campo para ordenação
+}
+
+interface AboutSection {
+  id: string
+  main_text: string
+}
+
+interface AboutFeature {
+  id: string
+  title: string
+  description: string
+  icon_name?: string  // Nome do ícone do Lucide React
+  icon_url?: string  // URL de imagem alternativa
+  order?: number
 }
 
 export default function AdminPage() {
@@ -77,6 +91,21 @@ export default function AdminPage() {
   })
   const [movingTestimonial, setMovingTestimonial] = useState<string | null>(null)
 
+  // Estados para gestão de Sobre Nós
+  const [aboutSection, setAboutSection] = useState<AboutSection | null>(null)
+  const [isLoadingAbout, setIsLoadingAbout] = useState(true)
+  const [aboutFeatures, setAboutFeatures] = useState<AboutFeature[]>([])
+  const [isLoadingFeatures, setIsLoadingFeatures] = useState(true)
+  const [editingFeatureId, setEditingFeatureId] = useState<string | null>(null)
+  const [isCreatingFeature, setIsCreatingFeature] = useState(false)
+  const [featureFormData, setFeatureFormData] = useState<Partial<AboutFeature>>({
+    title: '',
+    description: '',
+    icon_name: '',
+    icon_url: '',
+  })
+  const [movingFeature, setMovingFeature] = useState<string | null>(null)
+
   useEffect(() => {
     // Verificar se o Supabase está configurado
     console.log('🔧 Verificando configuração do Supabase...')
@@ -86,6 +115,8 @@ export default function AdminPage() {
     fetchProfessionals()
     fetchServices()
     fetchTestimonials()
+    fetchAboutSection()
+    fetchAboutFeatures()
   }, [])
 
   const fetchProfessionals = async () => {
@@ -970,6 +1001,257 @@ export default function AdminPage() {
     }
   }
 
+  // ========== FUNÇÕES PARA SOBRE NÓS ==========
+  
+  const fetchAboutSection = async () => {
+    try {
+      setIsLoadingAbout(true)
+      console.log('🔍 A buscar texto principal da secção Sobre Nós...')
+      
+      const { data, error } = await supabase
+        .from('about_section')
+        .select('*')
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "about_section" não existe ainda.')
+          setAboutSection(null)
+          setIsLoadingAbout(false)
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        throw error
+      }
+
+      if (data) {
+        console.log('✅ Texto principal encontrado:', data)
+        setAboutSection(data)
+      } else {
+        console.warn('⚠️ Nenhum texto principal encontrado')
+        setAboutSection(null)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar texto principal:', error)
+      setAboutSection(null)
+    } finally {
+      setIsLoadingAbout(false)
+    }
+  }
+
+  const updateAboutSection = async (text: string) => {
+    try {
+      if (aboutSection) {
+        // Atualizar existente
+        const { data, error } = await supabase
+          .from('about_section')
+          .update({ main_text: text })
+          .eq('id', aboutSection.id)
+          .select()
+          .single()
+
+        if (error) throw error
+        if (data) setAboutSection(data)
+        alert('Texto principal atualizado com sucesso!')
+      } else {
+        // Criar novo
+        const { data, error } = await supabase
+          .from('about_section')
+          .insert({ main_text: text })
+          .select()
+          .single()
+
+        if (error) throw error
+        if (data) setAboutSection(data)
+        alert('Texto principal criado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar texto principal:', error)
+      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    }
+  }
+
+  const fetchAboutFeatures = async () => {
+    try {
+      setIsLoadingFeatures(true)
+      console.log('🔍 A buscar features da secção Sobre Nós...')
+      
+      const { data, error } = await supabase
+        .from('about_features')
+        .select('*')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "about_features" não existe ainda.')
+          setAboutFeatures([])
+          setIsLoadingFeatures(false)
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} features encontradas:`, data)
+        setAboutFeatures(data)
+      } else {
+        setAboutFeatures([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar features:', error)
+      setAboutFeatures([])
+    } finally {
+      setIsLoadingFeatures(false)
+    }
+  }
+
+  const handleCreateFeature = async () => {
+    try {
+      const maxOrder = aboutFeatures.length > 0 
+        ? Math.max(...aboutFeatures.map(f => f.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        title: featureFormData.title || '',
+        description: featureFormData.description || '',
+        icon_name: featureFormData.icon_name || null,
+        icon_url: featureFormData.icon_url || null,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('about_features')
+        .insert(insertData)
+        .select()
+
+      if (error) {
+        console.error('Erro ao criar feature:', error)
+        alert(`Erro ao criar feature: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setAboutFeatures([...aboutFeatures, data[0]])
+        setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+        setIsCreatingFeature(false)
+        alert('Feature criada com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao criar feature:', error)
+    }
+  }
+
+  const handleUpdateFeature = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('about_features')
+        .update({
+          title: featureFormData.title || '',
+          description: featureFormData.description || '',
+          icon_name: featureFormData.icon_name || null,
+          icon_url: featureFormData.icon_url || null,
+        })
+        .eq('id', id)
+        .select()
+
+      if (error) {
+        console.error('Erro ao atualizar feature:', error)
+        alert(`Erro ao atualizar feature: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setAboutFeatures(aboutFeatures.map(f => f.id === id ? data[0] : f))
+        setEditingFeatureId(null)
+        setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+        alert('Feature atualizada com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar feature:', error)
+    }
+  }
+
+  const handleDeleteFeature = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta feature?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('about_features')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir feature:', error)
+        alert(`Erro ao excluir feature: ${error.message}`)
+        throw error
+      }
+
+      setAboutFeatures(aboutFeatures.filter(f => f.id !== id))
+      alert('Feature excluída com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir feature:', error)
+    }
+  }
+
+  const startEditFeature = (feature: AboutFeature) => {
+    setEditingFeatureId(feature.id)
+    setFeatureFormData({
+      title: feature.title,
+      description: feature.description,
+      icon_name: feature.icon_name || '',
+      icon_url: feature.icon_url || '',
+    })
+  }
+
+  const cancelEditFeature = () => {
+    setEditingFeatureId(null)
+    setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+  }
+
+  const moveFeature = async (id: string, direction: 'up' | 'down') => {
+    const index = aboutFeatures.findIndex(f => f.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= aboutFeatures.length) return
+
+    const feature = aboutFeatures[index]
+    const otherFeature = aboutFeatures[newIndex]
+
+    setMovingFeature(id)
+
+    try {
+      const tempOrder = feature.order ?? 0
+      const otherOrder = otherFeature.order ?? 0
+
+      await supabase
+        .from('about_features')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('about_features')
+        .update({ order: tempOrder })
+        .eq('id', otherFeature.id)
+
+      const newFeatures = [...aboutFeatures]
+      ;[newFeatures[index], newFeatures[newIndex]] = [newFeatures[newIndex], newFeatures[index]]
+      setAboutFeatures(newFeatures)
+    } catch (error) {
+      console.error('Erro ao mover feature:', error)
+      alert('Erro ao mover feature. Tente novamente.')
+    } finally {
+      setMovingFeature(null)
+    }
+  }
+
   const startEdit = (professional: Professional) => {
     console.log('✏️ Iniciando edição de:', professional)
     setEditingId(professional.id)
@@ -1067,6 +1349,16 @@ export default function AdminPage() {
               }`}
             >
               Depoimentos
+            </button>
+            <button
+              onClick={() => setActiveTab('sobre-nos')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'sobre-nos'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Sobre Nós
             </button>
           </div>
         </div>
@@ -1976,6 +2268,242 @@ export default function AdminPage() {
                   </div>
                 )}
               </>
+            )}
+          </>
+        )}
+
+        {/* SECÇÃO SOBRE NÓS - Design Distinto (Layout em Duas Colunas) */}
+        {activeTab === 'sobre-nos' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Gestão de <span className="text-robinhood-green">Sobre Nós</span>
+              </h1>
+              <p className="text-gray-400 text-sm">Gerir o texto principal e os cards de características</p>
+            </div>
+
+            {isLoadingAbout || isLoadingFeatures ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* COLUNA ESQUERDA - Texto Principal */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-robinhood-green" />
+                    Texto Principal
+                  </h2>
+                  <textarea
+                    value={aboutSection?.main_text || ''}
+                    onChange={(e) => {
+                      if (aboutSection) {
+                        setAboutSection({ ...aboutSection, main_text: e.target.value })
+                      } else {
+                        setAboutSection({ id: '', main_text: e.target.value })
+                      }
+                    }}
+                    className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green min-h-[150px] mb-4"
+                    placeholder="Texto principal da secção Sobre Nós..."
+                  />
+                  <button
+                    onClick={() => updateAboutSection(aboutSection?.main_text || '')}
+                    className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    <Save className="w-5 h-5" />
+                    Guardar Texto Principal
+                  </button>
+                </div>
+
+                {/* COLUNA DIREITA - Features (Cards) */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                      <Star className="w-6 h-6 text-robinhood-green" />
+                      Características
+                    </h2>
+                    {!isCreatingFeature && (
+                      <button
+                        onClick={() => setIsCreatingFeature(true)}
+                        className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors text-sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Formulário de Criação */}
+                  {isCreatingFeature && (
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-4">
+                      <h3 className="text-lg font-bold text-white mb-3">Nova Característica</h3>
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          placeholder="Título"
+                          value={featureFormData.title || ''}
+                          onChange={(e) => setFeatureFormData({ ...featureFormData, title: e.target.value })}
+                          className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                        />
+                        <textarea
+                          placeholder="Descrição"
+                          value={featureFormData.description || ''}
+                          onChange={(e) => setFeatureFormData({ ...featureFormData, description: e.target.value })}
+                          className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green min-h-[80px] text-sm"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Nome do Ícone (ex: Users)"
+                            value={featureFormData.icon_name || ''}
+                            onChange={(e) => setFeatureFormData({ ...featureFormData, icon_name: e.target.value })}
+                            className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="OU URL da Imagem"
+                            value={featureFormData.icon_url || ''}
+                            onChange={(e) => setFeatureFormData({ ...featureFormData, icon_url: e.target.value })}
+                            className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleCreateFeature}
+                            className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                          >
+                            <Save className="w-4 h-4" />
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsCreatingFeature(false)
+                              setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                          >
+                            <X className="w-4 h-4" />
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de Features */}
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                    {aboutFeatures.length === 0 ? (
+                      <p className="text-gray-400 text-sm text-center py-4">Nenhuma característica adicionada ainda.</p>
+                    ) : (
+                      aboutFeatures.map((feature, index) => (
+                        <div
+                          key={feature.id}
+                          className="bg-gray-700 border border-gray-600 rounded-lg p-4"
+                        >
+                          {editingFeatureId === feature.id ? (
+                            <div className="space-y-3">
+                              <input
+                                type="text"
+                                value={featureFormData.title || ''}
+                                onChange={(e) => setFeatureFormData({ ...featureFormData, title: e.target.value })}
+                                className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                              />
+                              <textarea
+                                value={featureFormData.description || ''}
+                                onChange={(e) => setFeatureFormData({ ...featureFormData, description: e.target.value })}
+                                className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green min-h-[60px] text-sm"
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Nome do Ícone"
+                                  value={featureFormData.icon_name || ''}
+                                  onChange={(e) => setFeatureFormData({ ...featureFormData, icon_name: e.target.value })}
+                                  className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="OU URL da Imagem"
+                                  value={featureFormData.icon_url || ''}
+                                  onChange={(e) => setFeatureFormData({ ...featureFormData, icon_url: e.target.value })}
+                                  className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleUpdateFeature(feature.id)}
+                                  className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <Save className="w-4 h-4" />
+                                  Guardar
+                                </button>
+                                <button
+                                  onClick={cancelEditFeature}
+                                  className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <X className="w-4 h-4" />
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <div className="flex flex-col gap-1">
+                                    <button
+                                      onClick={() => moveFeature(feature.id, 'up')}
+                                      disabled={index === 0 || movingFeature === feature.id}
+                                      className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                      <ArrowUp className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => moveFeature(feature.id, 'down')}
+                                      disabled={index === aboutFeatures.length - 1 || movingFeature === feature.id}
+                                      className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                      <ArrowDown className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="text-white font-semibold mb-1">{feature.title}</h3>
+                                    <p className="text-gray-300 text-sm">{feature.description}</p>
+                                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                                      {feature.icon_name && (
+                                        <span className="bg-gray-600 px-2 py-1 rounded">Ícone: {feature.icon_name}</span>
+                                      )}
+                                      {feature.icon_url && (
+                                        <span className="bg-gray-600 px-2 py-1 rounded">Imagem URL</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 mt-3">
+                                <button
+                                  onClick={() => startEditFeature(feature)}
+                                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteFeature(feature.id)}
+                                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Excluir
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </>
         )}
