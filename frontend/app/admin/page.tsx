@@ -66,7 +66,7 @@ export default function AdminPage() {
   const [movingProfessional, setMovingProfessional] = useState<string | null>(null)  // UUID é string
 
   // Estados para gestão de serviços
-  const [activeTab, setActiveTab] = useState<'profissionais' | 'servicos' | 'depoimentos'>('profissionais')
+  const [activeTab, setActiveTab] = useState<'profissionais' | 'servicos' | 'depoimentos' | 'sobre-nos'>('profissionais')
   const [services, setServices] = useState<Service[]>([])
   const [isLoadingServices, setIsLoadingServices] = useState(true)
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
