@@ -812,7 +812,25 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-clinica-bg text-clinica-text">
       {/* 1. HOME - Hero Section Estilo Robinhood */}
-      <section id="home" className="relative min-h-screen flex flex-col bg-clinica-bg">
+      <section id="home" className="relative min-h-screen flex flex-col bg-clinica-bg overflow-hidden">
+        {/* Vídeo de Fundo do YouTube - Esbatido e Wide Screen */}
+        <div className="absolute inset-0 w-full h-full z-0">
+          <iframe
+            className="absolute inset-0 w-full h-full"
+            src="https://www.youtube.com/embed/3-3bGeqCqs8?autoplay=1&loop=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playlist=3-3bGeqCqs8&modestbranding=1"
+            title="Background Video"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            style={{
+              opacity: 0.3, // Esbatido (30% de opacidade)
+              filter: 'brightness(0.7)', // Escurecer um pouco para melhor contraste
+              pointerEvents: 'none', // Não interferir com cliques
+            }}
+          />
+          {/* Overlay escuro adicional para garantir legibilidade do texto */}
+          <div className="absolute inset-0 bg-clinica-bg/40"></div>
+        </div>
+
         {/* Header Fixo - Logo à esquerda, Menus no meio, Botão à direita */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-clinica-bg/95 backdrop-blur-sm border-b border-clinica-accent/20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -1035,7 +1053,7 @@ export default function Home() {
         </header>
 
         {/* Conteúdo Principal - Centralizado */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-32 md:pt-24 pb-16">
+        <div className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-32 md:pt-24 pb-16">
           <div className="max-w-5xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 40 }}
