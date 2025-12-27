@@ -809,25 +809,43 @@ function SobreNosSection() {
     fetchAboutData()
   }, [])
 
-  // Função para renderizar o ícone
+  // Função para renderizar o ícone ou imagem
   const renderIcon = (feature: AboutFeature) => {
     if (feature.icon_url) {
+      // Imagem carregada - formato distinto: maior, circular com borda
       return (
-        <img
-          src={feature.icon_url}
-          alt={feature.title}
-          className="w-12 h-12 mx-auto mb-4 object-contain"
-        />
+        <div className="mb-6 flex justify-center">
+          <div className="relative">
+            <img
+              src={feature.icon_url}
+              alt={feature.title}
+              className="w-24 h-24 rounded-full object-cover border-4 border-clinica-primary shadow-lg"
+            />
+            <div className="absolute inset-0 rounded-full border-2 border-clinica-menu opacity-20"></div>
+          </div>
+        </div>
       )
     }
 
     if (feature.icon_name && iconMap[feature.icon_name]) {
       const IconComponent = iconMap[feature.icon_name]
-      return <IconComponent className="w-12 h-12 text-clinica-primary mx-auto mb-4" />
+      return (
+        <div className="mb-6 flex justify-center">
+          <div className="w-24 h-24 rounded-full bg-clinica-primary/10 flex items-center justify-center border-2 border-clinica-primary">
+            <IconComponent className="w-12 h-12 text-clinica-primary" />
+          </div>
+        </div>
+      )
     }
 
     // Fallback: ícone padrão
-    return <HelpCircle className="w-12 h-12 text-clinica-primary mx-auto mb-4" />
+    return (
+      <div className="mb-6 flex justify-center">
+        <div className="w-24 h-24 rounded-full bg-clinica-primary/10 flex items-center justify-center border-2 border-clinica-primary">
+          <HelpCircle className="w-12 h-12 text-clinica-primary" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -864,11 +882,11 @@ function SobreNosSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 text-center shadow-md"
+                className="bg-clinica-bg border border-clinica-primary rounded-xl p-8 text-center shadow-lg hover:shadow-xl transition-shadow"
               >
                 {renderIcon(feature)}
-                <h3 className="text-xl font-bold mb-2 text-clinica-text">{feature.title}</h3>
-                <p className="text-clinica-text">{feature.description}</p>
+                <h3 className="text-xl font-bold mb-3 text-clinica-text">{feature.title}</h3>
+                <p className="text-clinica-text opacity-90 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
