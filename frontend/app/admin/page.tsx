@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface Professional {
   id: string  // UUID no Supabase
