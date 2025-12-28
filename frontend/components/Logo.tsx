@@ -72,8 +72,8 @@ export default function Logo({ onClick }: LogoProps) {
       onClick={onClick}
       className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
     >
-      {/* Retângulo arredondado para o logo */}
-      <div className="relative w-32 h-20 sm:w-40 sm:h-24 md:w-48 md:h-28 rounded-xl bg-clinica-bg border-2 border-clinica-primary flex items-center justify-center overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+      {/* Retângulo arredondado para o logo - SEM BORDA */}
+      <div className="relative w-32 h-20 sm:w-40 sm:h-24 md:w-48 md:h-28 rounded-xl bg-clinica-bg flex items-center justify-center overflow-hidden">
         {loading ? (
           // Placeholder enquanto carrega
           <div className="flex flex-col items-center justify-center">
