@@ -861,6 +861,175 @@ function FAQSection() {
   )
 }
 
+// Componente da secção Seguradoras
+function SeguradorasSection() {
+  const [insurers, setInsurers] = useState<Insurer[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchInsurers() {
+      try {
+        setLoading(true)
+        console.log('🔍 A buscar seguradoras do Supabase...')
+        const { data, error } = await supabase
+          .from('insurers')
+          .select('*')
+          .order('box_number', { ascending: true })
+          .order('order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
+
+        if (error) {
+          if (error.message.includes('does not exist') || error.message.includes('relation')) {
+            console.warn('⚠️ Tabela "insurers" não existe ainda. Usando seguradoras padrão.')
+            setInsurers([
+              { id: '1', name: 'Medicare', logo_url: '', box_number: 1, order: 1 },
+              { id: '2', name: 'AdvanceCare', logo_url: '', box_number: 1, order: 2 },
+              { id: '3', name: 'Multicare', logo_url: '', box_number: 1, order: 3 },
+              { id: '4', name: 'Allianz Care', logo_url: '', box_number: 1, order: 4 },
+            ])
+            setLoading(false)
+            return
+          }
+          throw error
+        }
+
+        if (data && data.length > 0) {
+          console.log(`✅ ${data.length} seguradoras encontradas:`, data)
+          setInsurers(data)
+        } else {
+          console.warn('⚠️ Nenhuma seguradora encontrada')
+          setInsurers([
+            { id: '1', name: 'Medicare', logo_url: '', box_number: 1, order: 1 },
+            { id: '2', name: 'AdvanceCare', logo_url: '', box_number: 1, order: 2 },
+            { id: '3', name: 'Multicare', logo_url: '', box_number: 1, order: 3 },
+            { id: '4', name: 'Allianz Care', logo_url: '', box_number: 1, order: 4 },
+          ])
+        }
+      } catch (err) {
+        console.error('❌ Erro ao buscar seguradoras:', err)
+        setInsurers([
+          { id: '1', name: 'Medicare', logo_url: '', box_number: 1, order: 1 },
+          { id: '2', name: 'AdvanceCare', logo_url: '', box_number: 1, order: 2 },
+          { id: '3', name: 'Multicare', logo_url: '', box_number: 1, order: 3 },
+          { id: '4', name: 'Allianz Care', logo_url: '', box_number: 1, order: 4 },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInsurers()
+  }, [])
+
+  // Agrupar seguradoras por caixa (box_number)
+  const insurersByBox = useMemo(() => {
+    const boxes: { [key: number]: Insurer[] } = { 1: [], 2: [], 3: [] }
+    insurers.forEach(insurer => {
+      if (insurer.box_number >= 1 && insurer.box_number <= 3) {
+        boxes[insurer.box_number].push(insurer)
+      }
+    })
+    return boxes
+  }, [insurers])
+
+  return (
+    <section id="seguradoras" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Seguradoras</h2>
+          <p className="text-lg text-clinica-text font-medium">Aceitamos os principais seguros de saúde</p>
+        </motion.div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-clinica-text opacity-70">A carregar seguradoras...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((boxNum) => {
+              const boxInsurers = insurersByBox[boxNum] || []
+              // Limitar a 4 imagens por caixa
+              const displayInsurers = boxInsurers.slice(0, 4)
+              
+              return (
+                <motion.div
+                  key={boxNum}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: boxNum * 0.1 }}
+                  className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors"
+                >
+                  {/* Grid de imagens redondas - ajusta automaticamente se tiver menos de 4 */}
+                  <div className={`grid gap-4 ${
+                    displayInsurers.length === 1 ? 'grid-cols-1' :
+                    displayInsurers.length === 2 ? 'grid-cols-2' :
+                    displayInsurers.length === 3 ? 'grid-cols-3' :
+                    'grid-cols-2' // 4 imagens: 2x2
+                  }`}>
+                    {displayInsurers.map((insurer, index) => (
+                      <motion.div
+                        key={insurer.id}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4, delay: index * 0.1 }}
+                        className="flex flex-col items-center"
+                      >
+                        {/* Imagem redonda */}
+                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-clinica-accent border-2 border-clinica-primary flex items-center justify-center overflow-hidden mb-2 shadow-md hover:shadow-lg transition-shadow">
+                          {insurer.logo_url ? (
+                            <img
+                              src={insurer.logo_url}
+                              alt={insurer.name}
+                              className="w-full h-full rounded-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                const parent = target.parentElement
+                                if (parent) {
+                                  parent.innerHTML = `<div class="w-full h-full rounded-full bg-clinica-primary/10 flex items-center justify-center"><span class="text-clinica-primary font-bold text-sm">${insurer.name.substring(0, 2).toUpperCase()}</span></div>`
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full rounded-full bg-clinica-primary/10 flex items-center justify-center">
+                              <span className="text-clinica-primary font-bold text-sm md:text-base">
+                                {insurer.name.substring(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {/* Label */}
+                        <p className="text-clinica-text text-xs md:text-sm font-semibold text-center mt-1">
+                          {insurer.name}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </div>
+                  
+                  {/* Mensagem se não houver seguradoras nesta caixa */}
+                  {displayInsurers.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-clinica-text opacity-50 text-sm">Nenhuma seguradora nesta caixa</p>
+                    </div>
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // Componente da secção Sobre Nós
 function SobreNosSection() {
   const [mainText, setMainText] = useState<string>('')
@@ -1526,35 +1695,7 @@ export default function Home() {
       </section>
 
       {/* 7. SEGURADORAS */}
-      <section id="seguradoras" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Seguradoras</h2>
-            <p className="text-lg text-clinica-text font-medium">Aceitamos os principais seguros de saúde</p>
-          </motion.div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {['Medicare', 'AdvanceCare', 'Multicare', 'Allianz Care'].map((seguradora, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 text-center hover:border-clinica-menu transition-colors"
-              >
-                <Building2 className="w-12 h-12 text-clinica-menu mx-auto mb-4" />
-                <p className="font-semibold">{seguradora}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <SeguradorasSection />
 
       {/* 8. FAQ */}
       <FAQSection />
@@ -1720,4 +1861,3 @@ export default function Home() {
     </div>
   )
 }
-
