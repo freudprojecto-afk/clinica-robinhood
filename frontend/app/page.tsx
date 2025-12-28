@@ -1606,11 +1606,9 @@ export default function Home() {
               {/* Mensagem Principal - Grande e Impactante */}
               <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-clinica-text leading-tight">
                 Tratamento de{' '}
-                <span className="text-clinica-primary">Burnout</span>,{' '}
-                <span className="text-clinica-primary">Ansiedade</span>,{' '}
-                <span className="text-clinica-primary">Bullying</span> e Problemas Relacionais em{' '}
-                <span className="text-clinica-menu">Lisboa</span> e{' '}
-                <span className="text-clinica-menu">Online</span>
+                <span className="text-clinica-cta">Burnout</span>,{' '}
+                <span className="text-clinica-cta">Ansiedade</span>,{' '}
+                <span className="text-clinica-cta">Bullying</span> e Problemas Relacionais e outros...
               </h1>
 
               {/* Botão Agendar Consulta - Estilo Robinhood */}
