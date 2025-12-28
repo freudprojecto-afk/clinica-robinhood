@@ -991,24 +991,27 @@ function SeguradorasSection() {
                         className="flex flex-col items-center"
                       >
                         {/* Imagem redonda */}
-                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-clinica-accent border-2 border-clinica-primary flex items-center justify-center overflow-hidden mb-2 shadow-md hover:shadow-lg transition-shadow">
-                          {insurer.logo_url ? (
+                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white border-2 border-clinica-primary flex items-center justify-center overflow-hidden mb-2 shadow-md hover:shadow-lg transition-shadow">
+                          {insurer.logo_url && insurer.logo_url.trim() !== '' ? (
                             <img
                               src={insurer.logo_url}
                               alt={insurer.name}
-                              className="w-full h-full rounded-full object-cover"
+                              className="w-full h-full rounded-full object-contain p-2"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement
                                 target.style.display = 'none'
                                 const parent = target.parentElement
-                                if (parent) {
-                                  parent.innerHTML = `<div class="w-full h-full rounded-full bg-clinica-primary/10 flex items-center justify-center"><span class="text-clinica-primary font-bold text-sm">${insurer.name.substring(0, 2).toUpperCase()}</span></div>`
+                                if (parent && !parent.querySelector('.fallback-initials')) {
+                                  const fallback = document.createElement('div')
+                                  fallback.className = 'w-full h-full rounded-full bg-clinica-primary/10 flex items-center justify-center fallback-initials'
+                                  fallback.innerHTML = `<span class="text-clinica-primary font-bold text-xs md:text-sm">${insurer.name.substring(0, 2).toUpperCase()}</span>`
+                                  parent.appendChild(fallback)
                                 }
                               }}
                             />
                           ) : (
                             <div className="w-full h-full rounded-full bg-clinica-primary/10 flex items-center justify-center">
-                              <span className="text-clinica-primary font-bold text-sm md:text-base">
+                              <span className="text-clinica-primary font-bold text-xs md:text-sm">
                                 {insurer.name.substring(0, 2).toUpperCase()}
                               </span>
                             </div>
