@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star, FileText, HelpCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star, FileText, HelpCircle, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Professional {
@@ -125,6 +125,19 @@ export default function AdminPage() {
     answer: '',
   })
   const [movingFAQ, setMovingFAQ] = useState<string | null>(null)
+
+  // Estados para gestão de seguradoras
+  const [insurers, setInsurers] = useState<Insurer[]>([])
+  const [isLoadingInsurers, setIsLoadingInsurers] = useState(true)
+  const [editingInsurerId, setEditingInsurerId] = useState<string | null>(null)
+  const [isCreatingInsurer, setIsCreatingInsurer] = useState(false)
+  const [insurerFormData, setInsurerFormData] = useState<Partial<Insurer>>({
+    name: '',
+    logo_url: '',
+    box_number: 1,
+  })
+  const [uploadingInsurerImage, setUploadingInsurerImage] = useState<string | null>(null)
+  const [movingInsurer, setMovingInsurer] = useState<string | null>(null)
 
   useEffect(() => {
     // Verificar se o Supabase está configurado
