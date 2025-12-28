@@ -1352,8 +1352,8 @@ export default function Home() {
             allow="autoplay; encrypted-media"
             allowFullScreen
             style={{
-              opacity: 0.5, // Esbatido (50% de opacidade - aumentado para mais visibilidade)
-              filter: 'brightness(0.85) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
+              opacity: 0.7, // Esbatido (70% de opacidade - aumentado para mais visibilidade)
+              filter: 'brightness(0.95) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
               pointerEvents: 'none', // Não interferir com cliques
             }}
           />
@@ -1910,3 +1910,4 @@ export default function Home() {
     </div>
   )
 }
+
