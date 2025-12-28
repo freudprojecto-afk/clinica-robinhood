@@ -10,15 +10,18 @@ interface LogoProps {
 export default function Logo({ onClick }: LogoProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0) // Para forçar refresh
 
   useEffect(() => {
     async function fetchLogo() {
       try {
+        console.log('🔍 A buscar logo do Supabase...')
+        
         // Listar ficheiros no bucket 'logos'
         const { data, error } = await supabase.storage
           .from('logos')
           .list('', {
-            limit: 10,
+            limit: 100,
             sortBy: { column: 'created_at', order: 'desc' }
           })
 
@@ -30,8 +33,11 @@ export default function Logo({ onClick }: LogoProps) {
             setLoading(false)
             return
           }
+          console.error('❌ Erro ao listar ficheiros:', error)
           throw error
         }
+
+        console.log('📋 Ficheiros encontrados:', data?.map(f => f.name) || [])
 
         if (data && data.length > 0) {
           // Procurar por ficheiro que começa com "logo"
@@ -40,13 +46,26 @@ export default function Logo({ onClick }: LogoProps) {
           )
 
           if (logoFile) {
+            console.log('✅ Logo encontrado:', logoFile.name)
+            console.log('📅 Data de criação:', logoFile.created_at)
+            console.log('📅 Última modificação:', logoFile.updated_at || logoFile.created_at)
+            
             // Obter URL pública do logo
             const { data: urlData } = supabase.storage
               .from('logos')
               .getPublicUrl(logoFile.name)
 
             if (urlData?.publicUrl) {
-              setLogoUrl(urlData.publicUrl)
+              // Adicionar timestamp e versão baseada na data de modificação para forçar refresh
+              const fileTimestamp = logoFile.updated_at || logoFile.created_at || Date.now()
+              const timestamp = new Date(fileTimestamp).getTime()
+              const urlWithCacheBuster = `${urlData.publicUrl}?v=${timestamp}&t=${Date.now()}`
+              
+              console.log('🔗 URL do logo:', urlWithCacheBuster)
+              setLogoUrl(urlWithCacheBuster)
+            } else {
+              console.warn('⚠️ URL pública não disponível')
+              setLogoUrl(null)
             }
           } else {
             console.log('⚠️ Nenhum ficheiro "logo.*" encontrado. Usando logo padrão.')
@@ -65,7 +84,42 @@ export default function Logo({ onClick }: LogoProps) {
     }
 
     fetchLogo()
-  }, [])
+    
+    // Recarregar logo a cada 3 segundos (para atualizar quando houver novo upload)
+    const interval = setInterval(() => {
+      console.log('🔄 A recarregar logo...')
+      fetchLogo()
+    }, 3000)
+    
+    // Listener para eventos de storage (quando há novo upload noutra aba)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'logo-updated') {
+        console.log('📦 Evento de storage detectado (logo atualizado), a recarregar logo...')
+        setRefreshKey(prev => prev + 1)
+        fetchLogo()
+      }
+    }
+    
+    // Verificar se há parâmetro de refresh na URL
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.has('logo-refresh')) {
+      console.log('🔄 Parâmetro logo-refresh na URL, a forçar refresh...')
+      setRefreshKey(prev => prev + 1)
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    // Também verificar quando a página ganha foco (pode ter sido atualizada noutra aba)
+    window.addEventListener('focus', () => {
+      console.log('👁️ Página ganhou foco, a verificar logo...')
+      fetchLogo()
+    })
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('focus', fetchLogo)
+    }
+  }, [refreshKey])
 
   return (
     <div
@@ -87,12 +141,18 @@ export default function Logo({ onClick }: LogoProps) {
         ) : logoUrl ? (
           // Logo carregado do Supabase
           <img
+            key={`${logoUrl}-${refreshKey}`} // Key única com refreshKey para forçar re-render
             src={logoUrl}
             alt="Clínica Freud Logo"
             className="w-full h-full object-contain p-2"
-            onError={() => {
+            loading="eager" // Carregar imediatamente, sem lazy loading
+            onError={(e) => {
               // Se a imagem falhar, mostrar placeholder
+              console.error('❌ Erro ao carregar imagem do logo:', e)
               setLogoUrl(null)
+            }}
+            onLoad={() => {
+              console.log('✅ Logo carregado com sucesso')
             }}
           />
         ) : (
