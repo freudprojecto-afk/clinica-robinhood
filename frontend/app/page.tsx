@@ -1,22 +1,30 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe } from 'lucide-react'
+import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star, FileText, HelpCircle, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
-interface Profissional {
-  id: number
+interface Professional {
+  id: string  // UUID no Supabase
   name: string
   title?: string
-  speciality?: string
-  specialty?: string  // Pode ser speciality ou specialty
+  speciality?: string  // Pode ser speciality ou specialty
+  specialty?: string  // Campo usado no Supabase
   description?: string
-  cv?: string  // Campo para CV completo
+  cv?: string  // Campo usado no Supabase (em vez de description)
   photo?: string
   photo_url?: string  // Campo usado no Supabase
   image?: string
   foto?: string
+  order?: number  // Campo para ordenação
+}
+
+interface Service {
+  id: string  // UUID no Supabase
+  title: string
+  description: string
+  image_url?: string  // URL da imagem de fundo
   order?: number  // Campo para ordenação
 }
 
@@ -49,168 +57,1735 @@ interface FAQ {
   order?: number
 }
 
-// Componente da secção Corpo Clínico
-function CorpoClinicoSection() {
-  const [profissionais, setProfissionais] = useState<Profissional[]>([])
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Todas')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [itemsPerView, setItemsPerView] = useState(3)
-  const [profissionalSelecionado, setProfissionalSelecionado] = useState<Profissional | null>(null)
+export default function AdminPage() {
+  const [professionals, setProfessionals] = useState<Professional[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [editingId, setEditingId] = useState<string | null>(null)  // UUID é string
+  const [isCreating, setIsCreating] = useState(false)
+  const [formData, setFormData] = useState<Partial<Professional>>({
+    name: '',
+    title: '',
+    speciality: '',
+    description: '',
+    photo: '',
+  })
+  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null)  // UUID é string
+  const [movingProfessional, setMovingProfessional] = useState<string | null>(null)  // UUID é string
 
-  // Buscar profissionais da base de dados
+  // Estados para gestão de serviços
+  type TabType = 'profissionais' | 'servicos' | 'depoimentos' | 'sobre-nos' | 'faqs' | 'seguradoras'
+  const [activeTab, setActiveTab] = useState<TabType>('profissionais')
+  const [services, setServices] = useState<Service[]>([])
+  const [isLoadingServices, setIsLoadingServices] = useState(true)
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
+  const [isCreatingService, setIsCreatingService] = useState(false)
+  const [serviceFormData, setServiceFormData] = useState<Partial<Service>>({
+    title: '',
+    description: '',
+    image_url: '',
+  })
+  const [uploadingServiceImage, setUploadingServiceImage] = useState<string | null>(null)
+  const [movingService, setMovingService] = useState<string | null>(null)
+
+  // Estados para gestão de depoimentos
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [isLoadingTestimonials, setIsLoadingTestimonials] = useState(true)
+  const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null)
+  const [isCreatingTestimonial, setIsCreatingTestimonial] = useState(false)
+  const [testimonialFormData, setTestimonialFormData] = useState<Partial<Testimonial>>({
+    name: '',
+    text: '',
+    rating: 5,
+  })
+  const [movingTestimonial, setMovingTestimonial] = useState<string | null>(null)
+
+  // Estados para gestão de Sobre Nós
+  const [aboutSection, setAboutSection] = useState<AboutSection | null>(null)
+  const [isLoadingAbout, setIsLoadingAbout] = useState(true)
+  const [aboutFeatures, setAboutFeatures] = useState<AboutFeature[]>([])
+  const [isLoadingFeatures, setIsLoadingFeatures] = useState(true)
+  const [editingFeatureId, setEditingFeatureId] = useState<string | null>(null)
+  const [isCreatingFeature, setIsCreatingFeature] = useState(false)
+  const [featureFormData, setFeatureFormData] = useState<Partial<AboutFeature>>({
+    title: '',
+    description: '',
+    icon_name: '',
+    icon_url: '',
+  })
+  const [movingFeature, setMovingFeature] = useState<string | null>(null)
+  const [uploadingFeatureImage, setUploadingFeatureImage] = useState<string | null>(null)
+
+  // Estados para gestão de FAQs
+  const [faqs, setFaqs] = useState<FAQ[]>([])
+  const [isLoadingFAQs, setIsLoadingFAQs] = useState(true)
+  const [editingFAQId, setEditingFAQId] = useState<string | null>(null)
+  const [isCreatingFAQ, setIsCreatingFAQ] = useState(false)
+  const [faqFormData, setFaqFormData] = useState<Partial<FAQ>>({
+    question: '',
+    answer: '',
+  })
+  const [movingFAQ, setMovingFAQ] = useState<string | null>(null)
+
+  // Estados para gestão de seguradoras
+  const [insurers, setInsurers] = useState<Insurer[]>([])
+  const [isLoadingInsurers, setIsLoadingInsurers] = useState(true)
+  const [editingInsurerId, setEditingInsurerId] = useState<string | null>(null)
+  const [isCreatingInsurer, setIsCreatingInsurer] = useState(false)
+  const [insurerFormData, setInsurerFormData] = useState<Partial<Insurer>>({
+    name: '',
+    logo_url: '',
+    box_number: 1,
+  })
+  const [uploadingInsurerImage, setUploadingInsurerImage] = useState<string | null>(null)
+  const [movingInsurer, setMovingInsurer] = useState<string | null>(null)
+
   useEffect(() => {
-    async function fetchProfissionais() {
-      try {
-        setLoading(true)
-        console.log('🔍 A buscar profissionais do Supabase...')
-        const { data, error: fetchError } = await supabase
-          .from('professionals')
-          .select('*')
-          .order('order', { ascending: true, nullsFirst: false })
-          .order('id', { ascending: true })
-
-        if (fetchError) {
-          throw fetchError
-        }
-
-        if (data) {
-          console.log(`✅ ${data.length} profissionais encontrados:`, data)
-          // Log de cada profissional para debug
-          data.forEach((p: Profissional) => {
-            console.log(`📋 ${p.name}:`, {
-              photo_url: p.photo_url,
-              photo: p.photo,
-              image: p.image,
-              foto: p.foto
-            })
-          })
-          setProfissionais(data)
-        } else {
-          console.warn('⚠️ Nenhum dado retornado')
-          setProfissionais([])
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar profissionais')
-        console.error('❌ Erro ao buscar profissionais:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProfissionais()
+    // Verificar se o Supabase está configurado
+    console.log('🔧 Verificando configuração do Supabase...')
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'NÃO CONFIGURADO')
+    console.log('Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Configurado' : 'NÃO CONFIGURADO')
+    
+    fetchProfessionals()
+    fetchServices()
+    fetchTestimonials()
+    fetchAboutSection()
+    fetchAboutFeatures()
+    fetchFAQs()
+    fetchInsurers()
   }, [])
 
-  // Extrair categorias únicas do campo speciality
-  const categorias = useMemo(() => {
-    if (!profissionais || profissionais.length === 0) {
-      console.log('⚠️ Nenhum profissional para extrair categorias')
-      return []
-    }
+  const fetchProfessionals = async () => {
+    try {
+      setIsLoading(true)
+      console.log('🔍 A buscar profissionais do Supabase...')
+      
+      // IMPORTANTE: Especificar explicitamente as colunas (sem 'description')
+      const { data, error } = await supabase
+        .from('professionals')
+        .select('id, name, title, specialty, cv, photo_url, order, created_at, updated_at')
+        // Ordenar por order se existir, senão por name
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('name', { ascending: true })
 
-    // Extrair todas as especialidades, verificando tanto speciality quanto specialty
-    const todasEspecialidades = profissionais
-      .map((p: Profissional) => {
-        // Tentar speciality primeiro, depois specialty
-        const especialidade = p.speciality || p.specialty || null
-        if (!especialidade) {
-          console.warn(`⚠️ Profissional ${p.name} (ID: ${p.id}) não tem especialidade definida`)
-          console.warn('   Campos disponíveis:', Object.keys(p))
-          console.warn('   Dados completos:', p)
-        }
-        return especialidade
-      })
-      .filter((s): s is string => {
-        const isValid = s !== null && s !== undefined && typeof s === 'string' && s.trim() !== ''
-        return isValid
-      })
+      console.log('📊 Resposta do Supabase:', { data, error })
 
-    // Remover duplicados e ordenar
-    const cats = Array.from(new Set(todasEspecialidades)).sort()
-    
-    console.log('📊 Profissionais analisados:', profissionais.length)
-    console.log('📊 Especialidades encontradas (antes de remover duplicados):', todasEspecialidades)
-    console.log('✅ Categorias únicas extraídas:', cats)
-    console.log('✅ Total de categorias:', cats.length)
-    
-    return cats
-  }, [profissionais])
+      if (error) {
+        console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao carregar profissionais: ${error.message}`)
+        throw error
+      }
 
-  // Filtrar profissionais baseado na categoria selecionada
-  const profissionaisFiltrados = useMemo(() => {
-    if (categoriaSelecionada === 'Todas') {
-      return profissionais
-    }
-    return profissionais.filter((p: Profissional) => {
-      const especialidade = p.speciality || p.specialty
-      return especialidade === categoriaSelecionada
-    })
-  }, [profissionais, categoriaSelecionada])
-
-  // Ajustar items por view baseado no tamanho da tela
-  useEffect(() => {
-    const updateItemsPerView = () => {
-      if (window.innerWidth < 768) {
-        setItemsPerView(1)
-      } else if (window.innerWidth < 1024) {
-        setItemsPerView(2)
+      if (data) {
+        console.log(`✅ ${data.length} profissionais encontrados:`, data)
+        setProfessionals(data)
       } else {
-        setItemsPerView(3)
+        console.warn('⚠️ Nenhum dado retornado do Supabase')
+        setProfessionals([])
       }
+    } catch (error) {
+      console.error('❌ Erro ao buscar profissionais:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert(`Erro ao carregar profissionais: ${errorMessage}`)
+      setProfessionals([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreate = async () => {
+    try {
+      // Obter o maior order atual ou usar o número de profissionais + 1
+      const maxOrder = professionals.length > 0 
+        ? Math.max(...professionals.map(p => p.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      // IMPORTANTE: A base de dados usa 'specialty' e 'cv', não 'speciality' e 'description'
+      const insertData: any = {
+        name: formData.name || '',
+        title: formData.title || null,
+        specialty: formData.speciality || '',  // Usar specialty (nome correto na BD)
+        cv: formData.description || null,  // Usar cv (nome correto na BD)
+        order: newOrder,
+      }
+      
+      // Adicionar photo_url se existir
+      if (formData.photo && formData.photo.trim() !== '') {
+        insertData.photo_url = formData.photo.trim()
+      }
+
+      console.log('📤 Dados a inserir:', insertData)
+      
+      // IMPORTANTE: Especificar explicitamente as colunas a retornar (sem 'description')
+      const { data, error } = await supabase
+        .from('professionals')
+        .insert([insertData])
+        .select('id, name, title, specialty, cv, photo_url, order, created_at, updated_at')
+
+      if (error) {
+        console.error('❌ Erro do Supabase ao criar:', error)
+        alert(`Erro ao criar profissional: ${error.message}\n\nVerifique a consola (F12) para mais detalhes.`)
+        throw error
+      }
+
+      console.log('✅ Profissional criado com sucesso! Dados retornados:', data)
+      
+      await fetchProfessionals()
+      setIsCreating(false)
+      setFormData({ name: '', title: '', speciality: '', description: '', photo: '' })
+      alert('✅ Profissional criado com sucesso!')
+    } catch (error) {
+      console.error('❌ Erro ao criar profissional:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert(`❌ Erro ao criar profissional: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
+    }
+  }
+
+  const handleUpdate = async (id: string) => {  // UUID é string
+    try {
+      console.log('💾 Atualizando profissional ID:', id, 'com dados:', formData)
+      
+      // Preparar dados para atualização (incluir photo_url se photo estiver preenchido)
+      // IMPORTANTE: A base de dados usa 'specialty' e 'cv', não 'speciality' e 'description'
+      const updateData: any = {
+        name: formData.name || '',
+        title: formData.title || null,
+        specialty: formData.speciality || formData.specialty || '',  // Usar specialty (nome correto na BD)
+        cv: formData.description || formData.cv || null,  // Usar cv (nome correto na BD)
+      }
+      
+      // Atualizar photo_url se photo estiver preenchido
+      // IMPORTANTE: A base de dados usa 'photo_url', não 'photo'
+      if (formData.photo && formData.photo.trim() !== '') {
+        updateData.photo_url = formData.photo.trim()
+      }
+
+      console.log('📤 Dados a enviar:', updateData)
+
+      // IMPORTANTE: Especificar explicitamente as colunas a retornar (sem 'description' e sem 'photo')
+      const { data, error } = await supabase
+        .from('professionals')
+        .update(updateData)
+        .eq('id', id)
+        .select('id, name, title, specialty, cv, photo_url, order, created_at, updated_at')
+
+      if (error) {
+        console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao atualizar: ${error.message}\n\nVerifique a consola (F12) para mais detalhes.`)
+        throw error
+      }
+
+      console.log('✅ Profissional atualizado com sucesso! Dados retornados:', data)
+      
+      // Recarregar os dados
+      await fetchProfessionals()
+      
+      // Limpar o formulário
+      setEditingId(null)
+      setFormData({ name: '', title: '', speciality: '', description: '', photo: '' })
+      
+      alert('✅ Profissional atualizado com sucesso!\n\nAs alterações foram salvas na base de dados.')
+    } catch (error) {
+      console.error('❌ Erro ao atualizar profissional:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert(`❌ Erro ao atualizar profissional: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
+    }
+  }
+
+  const handleDelete = async (id: string) => {  // UUID é string
+    if (!confirm('Tem certeza que deseja excluir este profissional?')) return
+
+    try {
+      const { error } = await supabase
+        .from('professionals')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        throw error
+      }
+
+      await fetchProfessionals()
+      alert('Profissional excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir profissional:', error)
+      alert('Erro ao excluir profissional')
+    }
+  }
+
+  // Função para inicializar ordem se não existir
+  const inicializarOrdem = async () => {
+    try {
+      // Verificar se algum profissional tem order null, undefined ou 0
+      const precisaInicializar = professionals.some(p => p.order === null || p.order === undefined || p.order === 0)
+      
+      if (precisaInicializar) {
+        console.log('🔄 Inicializando ordem dos profissionais...')
+        // Atualizar todos os profissionais com ordem baseada no índice atual
+        for (let i = 0; i < professionals.length; i++) {
+          const order = i + 1
+          const { error } = await supabase
+            .from('professionals')
+            .update({ order })
+            .eq('id', professionals[i].id)
+            .select('id, name, order')
+          
+          if (error) {
+            console.warn(`⚠️ Erro ao inicializar ordem para ${professionals[i].name}:`, error)
+            // Se o campo order não existir, continuar sem erro
+            if (!error.message.includes('column') && !error.message.includes('order')) {
+              throw error
+            }
+          }
+        }
+        // Recarregar após inicializar
+        await fetchProfessionals()
+      }
+    } catch (error) {
+      console.error('Erro ao inicializar ordem:', error)
+    }
+  }
+
+  // Função para mover profissional para cima
+  const moveUp = async (index: number) => {
+    if (index === 0) {
+      alert('Este profissional já está no topo da lista!')
+      return
     }
 
-    updateItemsPerView()
-    window.addEventListener('resize', updateItemsPerView)
-    return () => window.removeEventListener('resize', updateItemsPerView)
-  }, [])
+    const current = professionals[index]
+    const previous = professionals[index - 1]
 
-  // Resetar índice quando a categoria muda
-  useEffect(() => {
-    setCurrentIndex(0)
-  }, [categoriaSelecionada])
+    console.log(`⬆️ Movendo ${current.name} para cima (posição ${index} -> ${index - 1})`)
+    console.log('📋 Profissional atual:', current)
+    console.log('📋 Profissional anterior:', previous)
+    setMovingProfessional(current.id)
 
-  // Calcular total de slides
-  const totalSlides = Math.ceil(profissionaisFiltrados.length / itemsPerView)
+    try {
+      // Primeiro, tentar inicializar ordem se necessário
+      await inicializarOrdem()
+      
+      // Recarregar profissionais para obter valores atualizados
+      const { data: refreshedData } = await supabase
+        .from('professionals')
+        .select('id, name, order')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('name', { ascending: true })
+      
+      if (!refreshedData) {
+        throw new Error('Não foi possível recarregar os profissionais')
+      }
+      
+      // Encontrar os profissionais atualizados pelo ID
+      const updatedCurrent = refreshedData.find(p => p.id === current.id)
+      const updatedPrevious = refreshedData.find(p => p.id === previous.id)
+      
+      if (!updatedCurrent || !updatedPrevious) {
+        throw new Error('Não foi possível encontrar os profissionais atualizados')
+      }
+      
+      // Obter ordens atuais (usar valores atualizados)
+      const currentOrder = updatedCurrent.order ?? (index + 1)
+      const previousOrder = updatedPrevious.order ?? index
 
-  // Navegação do carrossel
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % totalSlides)
+      console.log(`📊 Ordens: atual=${currentOrder}, anterior=${previousOrder}`)
+      console.log(`🔄 Atualizando ${updatedCurrent.name} (ID: ${updatedCurrent.id}) para order=${previousOrder}`)
+      console.log(`🔄 Atualizando ${updatedPrevious.name} (ID: ${updatedPrevious.id}) para order=${currentOrder}`)
+
+      // Trocar as ordens
+      const { data: data1, error: error1 } = await supabase
+        .from('professionals')
+        .update({ order: previousOrder })
+        .eq('id', updatedCurrent.id)
+        .select('id, name, order')
+
+      if (error1) {
+        console.error('❌ Erro ao atualizar ordem:', error1)
+        if (error1.message.includes('column') || error1.message.includes('order') || error1.message.includes('does not exist')) {
+          alert(
+            '⚠️ Campo "order" não encontrado na base de dados!\n\n' +
+            'Por favor, adicione a coluna "order" na tabela "professionals" no Supabase.\n\n' +
+            'Passos:\n' +
+            '1. Vá ao Supabase Dashboard (https://supabase.com)\n' +
+            '2. Selecione o seu projeto\n' +
+            '3. Vá a "Table Editor" > "professionals"\n' +
+            '4. Clique em "Add Column"\n' +
+            '5. Nome: "order"\n' +
+            '6. Tipo: "int8" ou "integer"\n' +
+            '7. Nullable: Sim (marcar)\n' +
+            '8. Clique em "Save"\n\n' +
+            'Depois disso, recarregue a página e tente novamente!'
+          )
+        } else {
+          alert(`Erro: ${error1.message}\n\nVerifique a consola (F12) para mais detalhes.`)
+        }
+        throw error1
+      }
+
+      console.log('✅ Primeira atualização bem-sucedida:', data1)
+
+      const { data: data2, error: error2 } = await supabase
+        .from('professionals')
+        .update({ order: currentOrder })
+        .eq('id', updatedPrevious.id)
+        .select('id, name, order')
+
+      if (error2) {
+        console.error('❌ Erro ao atualizar profissional anterior:', error2)
+        // Reverter a primeira atualização
+        await supabase
+          .from('professionals')
+          .update({ order: currentOrder })
+          .eq('id', updatedCurrent.id)
+        throw error2
+      }
+
+      console.log('✅ Segunda atualização bem-sucedida:', data2)
+      console.log('✅ Ordem atualizada com sucesso!')
+      
+      // Recarregar os dados antes de mostrar o alert
+      await fetchProfessionals()
+      
+      // Verificar se a ordenação foi aplicada
+      const { data: verifyData } = await supabase
+        .from('professionals')
+        .select('id, name, order')
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('name', { ascending: true })
+      
+      console.log('🔍 Verificação da ordem após atualização:', verifyData)
+      
+      alert(`✅ ${updatedCurrent.name} movido para cima com sucesso!\n\nA ordem foi atualizada na base de dados.`)
+    } catch (error) {
+      console.error('❌ Erro ao mover profissional:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert(`❌ Erro ao alterar ordem: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
+    } finally {
+      setMovingProfessional(null)
+    }
   }
 
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides)
+  // Função para mover profissional para baixo
+  const moveDown = async (index: number) => {
+    if (index === professionals.length - 1) {
+      alert('Este profissional já está no final da lista!')
+      return
+    }
+
+    const current = professionals[index]
+    const next = professionals[index + 1]
+
+    console.log(`⬇️ Movendo ${current.name} para baixo (posição ${index} -> ${index + 1})`)
+    console.log('📋 Profissional atual:', current)
+    console.log('📋 Profissional próximo:', next)
+    setMovingProfessional(current.id)
+
+    try {
+      // Primeiro, tentar inicializar ordem se necessário
+      await inicializarOrdem()
+      
+      // Recarregar profissionais para obter valores atualizados
+      const { data: refreshedData } = await supabase
+        .from('professionals')
+        .select('id, name, order')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('name', { ascending: true })
+      
+      if (!refreshedData) {
+        throw new Error('Não foi possível recarregar os profissionais')
+      }
+      
+      // Encontrar os profissionais atualizados pelo ID
+      const updatedCurrent = refreshedData.find(p => p.id === current.id)
+      const updatedNext = refreshedData.find(p => p.id === next.id)
+      
+      if (!updatedCurrent || !updatedNext) {
+        throw new Error('Não foi possível encontrar os profissionais atualizados')
+      }
+      
+      // Obter ordens atuais (usar valores atualizados)
+      const currentOrder = updatedCurrent.order ?? (index + 1)
+      const nextOrder = updatedNext.order ?? (index + 2)
+
+      console.log(`📊 Ordens: atual=${currentOrder}, próximo=${nextOrder}`)
+      console.log(`🔄 Atualizando ${updatedCurrent.name} (ID: ${updatedCurrent.id}) para order=${nextOrder}`)
+      console.log(`🔄 Atualizando ${updatedNext.name} (ID: ${updatedNext.id}) para order=${currentOrder}`)
+
+      // Trocar as ordens
+      const { data: data1, error: error1 } = await supabase
+        .from('professionals')
+        .update({ order: nextOrder })
+        .eq('id', updatedCurrent.id)
+        .select('id, name, order')
+
+      if (error1) {
+        console.error('❌ Erro ao atualizar ordem:', error1)
+        if (error1.message.includes('column') || error1.message.includes('order') || error1.message.includes('does not exist')) {
+          alert(
+            '⚠️ Campo "order" não encontrado na base de dados!\n\n' +
+            'Por favor, adicione a coluna "order" na tabela "professionals" no Supabase.\n\n' +
+            'Passos:\n' +
+            '1. Vá ao Supabase Dashboard (https://supabase.com)\n' +
+            '2. Selecione o seu projeto\n' +
+            '3. Vá a "Table Editor" > "professionals"\n' +
+            '4. Clique em "Add Column"\n' +
+            '5. Nome: "order"\n' +
+            '6. Tipo: "int8" ou "integer"\n' +
+            '7. Nullable: Sim (marcar)\n' +
+            '8. Clique em "Save"\n\n' +
+            'Depois disso, recarregue a página e tente novamente!'
+          )
+        } else {
+          alert(`Erro: ${error1.message}\n\nVerifique a consola (F12) para mais detalhes.`)
+        }
+        throw error1
+      }
+
+      console.log('✅ Primeira atualização bem-sucedida:', data1)
+
+      const { data: data2, error: error2 } = await supabase
+        .from('professionals')
+        .update({ order: currentOrder })
+        .eq('id', updatedNext.id)
+        .select('id, name, order')
+
+      if (error2) {
+        console.error('❌ Erro ao atualizar próximo profissional:', error2)
+        // Reverter a primeira atualização
+        await supabase
+          .from('professionals')
+          .update({ order: currentOrder })
+          .eq('id', updatedCurrent.id)
+        throw error2
+      }
+
+      console.log('✅ Segunda atualização bem-sucedida:', data2)
+      console.log('✅ Ordem atualizada com sucesso!')
+      
+      // Recarregar os dados antes de mostrar o alert
+      await fetchProfessionals()
+      
+      // Verificar se a ordenação foi aplicada
+      const { data: verifyData } = await supabase
+        .from('professionals')
+        .select('id, name, order')
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('name', { ascending: true })
+      
+      console.log('🔍 Verificação da ordem após atualização:', verifyData)
+      
+      alert(`✅ ${updatedCurrent.name} movido para baixo com sucesso!\n\nA ordem foi atualizada na base de dados.`)
+    } catch (error) {
+      console.error('❌ Erro ao mover profissional:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert(`❌ Erro ao alterar ordem: ${errorMsg}\n\nVerifique a consola (F12) para mais detalhes.`)
+    } finally {
+      setMovingProfessional(null)
+    }
   }
 
-  // Obter profissionais visíveis no slide atual
-  const profissionaisVisiveis = profissionaisFiltrados.slice(
-    currentIndex * itemsPerView,
-    currentIndex * itemsPerView + itemsPerView
-  )
+  const handlePhotoUpload = async (id: string, file: File) => {  // UUID é string
+    setUploadingPhoto(id)
+    try {
+      // Tentar upload para Supabase Storage (se o bucket existir)
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${id}-${Math.random()}.${fileExt}`
+      const filePath = `professionals/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        // Se o bucket não existir, mostrar mensagem clara
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL da Foto"\n' +
+          '3. Clique em "Salvar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
+        throw uploadError
+      }
+
+      // Obter URL pública
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      // Atualizar profissional com a URL da foto
+      // IMPORTANTE: A base de dados usa 'photo_url', não 'photo'
+      const { error: updateError } = await supabase
+        .from('professionals')
+        .update({ photo_url: data.publicUrl })
+        .eq('id', id)
+
+      if (updateError) {
+        throw updateError
+      }
+
+      await fetchProfessionals()
+      alert('Foto atualizada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error)
+      // A mensagem já foi mostrada acima se for erro de bucket
+      if (error && typeof error === 'object' && 'message' in error && !String(error.message).includes('bucket')) {
+        alert('Erro ao fazer upload da foto. Use o botão "Colar URL" (verde) para adicionar uma URL de imagem diretamente.')
+      }
+    } finally {
+      setUploadingPhoto(null)
+    }
+  }
+
+  // ========== FUNÇÕES PARA SERVIÇOS ==========
+  
+  const fetchServices = async () => {
+    try {
+      setIsLoadingServices(true)
+      console.log('🔍 A buscar serviços do Supabase...')
+      
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, title, description, image_url, order')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('title', { ascending: true })
+
+      console.log('📊 Resposta do Supabase (serviços):', { data, error })
+
+      if (error) {
+        // Se a tabela não existir, criar array vazio
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "services" não existe ainda. Será criada quando adicionar o primeiro serviço.')
+          setServices([])
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao carregar serviços: ${error.message}`)
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} serviços encontrados:`, data)
+        setServices(data)
+      } else {
+        console.warn('⚠️ Nenhum dado retornado do Supabase')
+        setServices([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar serviços:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      // Não mostrar alerta se for apenas porque a tabela não existe
+      if (!errorMessage.includes('does not exist') && !errorMessage.includes('relation')) {
+        alert(`Erro ao carregar serviços: ${errorMessage}`)
+      }
+      setServices([])
+    } finally {
+      setIsLoadingServices(false)
+    }
+  }
+
+  const handleCreateService = async () => {
+    try {
+      const maxOrder = services.length > 0 
+        ? Math.max(...services.map(s => s.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        title: serviceFormData.title || '',
+        description: serviceFormData.description || '',
+        image_url: serviceFormData.image_url || null,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('services')
+        .insert(insertData)
+        .select('id, title, description, image_url, order')
+
+      if (error) {
+        console.error('Erro ao criar serviço:', error)
+        alert(`Erro ao criar serviço: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setServices([...services, data[0]])
+        setServiceFormData({ title: '', description: '', image_url: '' })
+        setIsCreatingService(false)
+        alert('Serviço criado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao criar serviço:', error)
+    }
+  }
+
+  const handleUpdateService = async (id: string) => {
+    try {
+      const updateData: any = {
+        title: serviceFormData.title || '',
+        description: serviceFormData.description || '',
+        image_url: serviceFormData.image_url || null,
+      }
+
+      const { data, error } = await supabase
+        .from('services')
+        .update(updateData)
+        .eq('id', id)
+        .select('id, title, description, image_url, order')
+
+      if (error) {
+        console.error('Erro ao atualizar serviço:', error)
+        alert(`Erro ao atualizar serviço: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setServices(services.map(s => s.id === id ? data[0] : s))
+        setEditingServiceId(null)
+        setServiceFormData({ title: '', description: '', image_url: '' })
+        alert('Serviço atualizado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar serviço:', error)
+    }
+  }
+
+  const handleDeleteService = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este serviço?')) return
+
+    try {
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir serviço:', error)
+        alert(`Erro ao excluir serviço: ${error.message}`)
+        throw error
+      }
+
+      setServices(services.filter(s => s.id !== id))
+      alert('Serviço excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir serviço:', error)
+    }
+  }
+
+  const handleServiceImageUpload = async (id: string, file: File) => {
+    setUploadingServiceImage(id)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${id}-${Math.random()}.${fileExt}`
+      const filePath = `services/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL da Imagem"\n' +
+          '3. Clique em "Salvar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
+        throw uploadError
+      }
+
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      const { error: updateError } = await supabase
+        .from('services')
+        .update({ image_url: data.publicUrl })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('Erro ao atualizar imagem do serviço:', updateError)
+        alert(`Erro ao atualizar imagem: ${updateError.message}`)
+        throw updateError
+      }
+
+      await fetchServices()
+      alert('Imagem do serviço atualizada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem do serviço:', error)
+    } finally {
+      setUploadingServiceImage(null)
+    }
+  }
+
+  const startEditService = (service: Service) => {
+    setEditingServiceId(service.id)
+    setServiceFormData({
+      title: service.title,
+      description: service.description,
+      image_url: service.image_url || '',
+    })
+  }
+
+  const cancelEditService = () => {
+    setEditingServiceId(null)
+    setServiceFormData({ title: '', description: '', image_url: '' })
+  }
+
+  // ========== FUNÇÕES PARA DEPOIMENTOS ==========
+  
+  const fetchTestimonials = async () => {
+    try {
+      setIsLoadingTestimonials(true)
+      console.log('🔍 A buscar depoimentos do Supabase...')
+      
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('id, name, text, rating, order')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: false })
+
+      console.log('📊 Resposta do Supabase (depoimentos):', { data, error })
+
+      if (error) {
+        // Se a tabela não existir, criar array vazio
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "testimonials" não existe ainda. Será criada quando adicionar o primeiro depoimento.')
+          setTestimonials([])
+          setIsLoadingTestimonials(false)
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        alert(`Erro ao carregar depoimentos: ${error.message}`)
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} depoimentos encontrados:`, data)
+        setTestimonials(data)
+      } else {
+        console.warn('⚠️ Nenhum dado retornado do Supabase')
+        setTestimonials([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar depoimentos:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      // Não mostrar alerta se for apenas porque a tabela não existe
+      if (!errorMessage.includes('does not exist') && !errorMessage.includes('relation')) {
+        alert(`Erro ao carregar depoimentos: ${errorMessage}`)
+      }
+      setTestimonials([])
+    } finally {
+      setIsLoadingTestimonials(false)
+    }
+  }
+
+  const handleCreateTestimonial = async () => {
+    try {
+      const maxOrder = testimonials.length > 0 
+        ? Math.max(...testimonials.map(t => t.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        name: testimonialFormData.name || '',
+        text: testimonialFormData.text || '',
+        rating: testimonialFormData.rating || 5,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('testimonials')
+        .insert(insertData)
+        .select('id, name, text, rating, order')
+
+      if (error) {
+        console.error('Erro ao criar depoimento:', error)
+        alert(`Erro ao criar depoimento: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setTestimonials([...testimonials, data[0]])
+        setTestimonialFormData({ name: '', text: '', rating: 5 })
+        setIsCreatingTestimonial(false)
+        alert('Depoimento criado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao criar depoimento:', error)
+    }
+  }
+
+  const handleUpdateTestimonial = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('testimonials')
+        .update({
+          name: testimonialFormData.name || '',
+          text: testimonialFormData.text || '',
+          rating: testimonialFormData.rating || 5,
+        })
+        .eq('id', id)
+        .select('id, name, text, rating, order')
+
+      if (error) {
+        console.error('Erro ao atualizar depoimento:', error)
+        alert(`Erro ao atualizar depoimento: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setTestimonials(testimonials.map(t => t.id === id ? data[0] : t))
+        setEditingTestimonialId(null)
+        setTestimonialFormData({ name: '', text: '', rating: 5 })
+        alert('Depoimento atualizado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar depoimento:', error)
+    }
+  }
+
+  const handleDeleteTestimonial = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este depoimento?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('testimonials')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir depoimento:', error)
+        alert(`Erro ao excluir depoimento: ${error.message}`)
+        throw error
+      }
+
+      setTestimonials(testimonials.filter(t => t.id !== id))
+      alert('Depoimento excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir depoimento:', error)
+    }
+  }
+
+  const startEditTestimonial = (testimonial: Testimonial) => {
+    setEditingTestimonialId(testimonial.id)
+    setTestimonialFormData({
+      name: testimonial.name,
+      text: testimonial.text,
+      rating: testimonial.rating,
+    })
+  }
+
+  const cancelEditTestimonial = () => {
+    setEditingTestimonialId(null)
+    setTestimonialFormData({ name: '', text: '', rating: 5 })
+  }
+
+  const moveTestimonial = async (id: string, direction: 'up' | 'down') => {
+    const index = testimonials.findIndex(t => t.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= testimonials.length) return
+
+    const testimonial = testimonials[index]
+    const otherTestimonial = testimonials[newIndex]
+
+    setMovingTestimonial(id)
+
+    try {
+      // Trocar os valores de order
+      const tempOrder = testimonial.order ?? 0
+      const otherOrder = otherTestimonial.order ?? 0
+
+      await supabase
+        .from('testimonials')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('testimonials')
+        .update({ order: tempOrder })
+        .eq('id', otherTestimonial.id)
+
+      // Atualizar estado local
+      const newTestimonials = [...testimonials]
+      ;[newTestimonials[index], newTestimonials[newIndex]] = [newTestimonials[newIndex], newTestimonials[index]]
+      setTestimonials(newTestimonials)
+    } catch (error) {
+      console.error('Erro ao mover depoimento:', error)
+      alert('Erro ao mover depoimento. Tente novamente.')
+    } finally {
+      setMovingTestimonial(null)
+    }
+  }
+
+  // ========== FUNÇÕES PARA SOBRE NÓS ==========
+  
+  const fetchAboutSection = async () => {
+    try {
+      setIsLoadingAbout(true)
+      console.log('🔍 A buscar texto principal da secção Sobre Nós...')
+      
+      const { data, error } = await supabase
+        .from('about_section')
+        .select('*')
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "about_section" não existe ainda.')
+          setAboutSection(null)
+          setIsLoadingAbout(false)
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        throw error
+      }
+
+      if (data) {
+        console.log('✅ Texto principal encontrado:', data)
+        setAboutSection(data)
+      } else {
+        console.warn('⚠️ Nenhum texto principal encontrado')
+        setAboutSection(null)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar texto principal:', error)
+      setAboutSection(null)
+    } finally {
+      setIsLoadingAbout(false)
+    }
+  }
+
+  const updateAboutSection = async (text: string) => {
+    try {
+      if (aboutSection) {
+        // Atualizar existente
+        const { data, error } = await supabase
+          .from('about_section')
+          .update({ main_text: text })
+          .eq('id', aboutSection.id)
+          .select()
+          .single()
+
+        if (error) throw error
+        if (data) setAboutSection(data)
+        alert('Texto principal atualizado com sucesso!')
+      } else {
+        // Criar novo
+        const { data, error } = await supabase
+          .from('about_section')
+          .insert({ main_text: text })
+          .select()
+          .single()
+
+        if (error) throw error
+        if (data) setAboutSection(data)
+        alert('Texto principal criado com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar texto principal:', error)
+      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    }
+  }
+
+  const fetchAboutFeatures = async () => {
+    try {
+      setIsLoadingFeatures(true)
+      console.log('🔍 A buscar features da secção Sobre Nós...')
+      
+      const { data, error } = await supabase
+        .from('about_features')
+        .select('*')
+        .order('order', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "about_features" não existe ainda.')
+          setAboutFeatures([])
+          setIsLoadingFeatures(false)
+          return
+        }
+        console.error('❌ Erro do Supabase:', error)
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} features encontradas:`, data)
+        setAboutFeatures(data)
+      } else {
+        setAboutFeatures([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar features:', error)
+      setAboutFeatures([])
+    } finally {
+      setIsLoadingFeatures(false)
+    }
+  }
+
+  const handleCreateFeature = async () => {
+    try {
+      const maxOrder = aboutFeatures.length > 0 
+        ? Math.max(...aboutFeatures.map(f => f.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        title: featureFormData.title || '',
+        description: featureFormData.description || '',
+        icon_name: featureFormData.icon_name || null,
+        icon_url: featureFormData.icon_url || null,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('about_features')
+        .insert(insertData)
+        .select()
+
+      if (error) {
+        console.error('Erro ao criar feature:', error)
+        alert(`Erro ao criar feature: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setAboutFeatures([...aboutFeatures, data[0]])
+        setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+        setIsCreatingFeature(false)
+        alert('Feature criada com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao criar feature:', error)
+    }
+  }
+
+  const handleUpdateFeature = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('about_features')
+        .update({
+          title: featureFormData.title || '',
+          description: featureFormData.description || '',
+          icon_name: featureFormData.icon_name || null,
+          icon_url: featureFormData.icon_url || null,
+        })
+        .eq('id', id)
+        .select()
+
+      if (error) {
+        console.error('Erro ao atualizar feature:', error)
+        alert(`Erro ao atualizar feature: ${error.message}`)
+        throw error
+      }
+
+      if (data && data[0]) {
+        setAboutFeatures(aboutFeatures.map(f => f.id === id ? data[0] : f))
+        setEditingFeatureId(null)
+        setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+        alert('Feature atualizada com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar feature:', error)
+    }
+  }
+
+  const handleDeleteFeature = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta feature?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('about_features')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir feature:', error)
+        alert(`Erro ao excluir feature: ${error.message}`)
+        throw error
+      }
+
+      setAboutFeatures(aboutFeatures.filter(f => f.id !== id))
+      alert('Feature excluída com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir feature:', error)
+    }
+  }
+
+  const startEditFeature = (feature: AboutFeature) => {
+    setEditingFeatureId(feature.id)
+    setFeatureFormData({
+      title: feature.title,
+      description: feature.description,
+      icon_name: feature.icon_name || '',
+      icon_url: feature.icon_url || '',
+    })
+  }
+
+  const cancelEditFeature = () => {
+    setEditingFeatureId(null)
+    setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+  }
+
+  const handleFeatureImageUpload = async (id: string, file: File) => {
+    setUploadingFeatureImage(id)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `feature-${id}-${Math.random()}.${fileExt}`
+      const filePath = `about-features/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL da Imagem"\n' +
+          '3. Clique em "Guardar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
+        throw uploadError
+      }
+
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      const { error: updateError } = await supabase
+        .from('about_features')
+        .update({ icon_url: data.publicUrl })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('Erro ao atualizar imagem da feature:', updateError)
+        alert(`Erro ao atualizar imagem: ${updateError.message}`)
+        throw updateError
+      }
+
+      await fetchAboutFeatures()
+      alert('Imagem da característica atualizada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem da feature:', error)
+    } finally {
+      setUploadingFeatureImage(null)
+    }
+  }
+
+  const moveFeature = async (id: string, direction: 'up' | 'down') => {
+    const index = aboutFeatures.findIndex(f => f.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= aboutFeatures.length) return
+
+    const feature = aboutFeatures[index]
+    const otherFeature = aboutFeatures[newIndex]
+
+    setMovingFeature(id)
+
+    try {
+      const tempOrder = feature.order ?? 0
+      const otherOrder = otherFeature.order ?? 0
+
+      await supabase
+        .from('about_features')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('about_features')
+        .update({ order: tempOrder })
+        .eq('id', otherFeature.id)
+
+      const newFeatures = [...aboutFeatures]
+      ;[newFeatures[index], newFeatures[newIndex]] = [newFeatures[newIndex], newFeatures[index]]
+      setAboutFeatures(newFeatures)
+    } catch (error) {
+      console.error('Erro ao mover feature:', error)
+      alert('Erro ao mover feature. Tente novamente.')
+    } finally {
+      setMovingFeature(null)
+    }
+  }
+
+  // Funções para gestão de FAQs
+  const fetchFAQs = async () => {
+    try {
+      setIsLoadingFAQs(true)
+      console.log('🔍 A buscar FAQs do Supabase...')
+      const { data, error } = await supabase
+        .from('faqs')
+        .select('*')
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "faqs" não existe ainda.')
+          setFaqs([])
+          return
+        }
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} FAQs encontrados:`, data)
+        setFaqs(data)
+      } else {
+        setFaqs([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar FAQs:', error)
+      setFaqs([])
+    } finally {
+      setIsLoadingFAQs(false)
+    }
+  }
+
+  const handleCreateFAQ = async () => {
+    try {
+      const maxOrder = faqs.length > 0 
+        ? Math.max(...faqs.map(f => f.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        question: faqFormData.question || '',
+        answer: faqFormData.answer || '',
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('faqs')
+        .insert([insertData])
+        .select()
+
+      if (error) {
+        console.error('Erro ao criar FAQ:', error)
+        alert(`Erro ao criar FAQ: ${error.message}`)
+        throw error
+      }
+
+      await fetchFAQs()
+      setIsCreatingFAQ(false)
+      setFaqFormData({ question: '', answer: '' })
+      alert('FAQ criado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao criar FAQ:', error)
+    }
+  }
+
+  const handleUpdateFAQ = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('faqs')
+        .update({
+          question: faqFormData.question || '',
+          answer: faqFormData.answer || '',
+        })
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao atualizar FAQ:', error)
+        alert(`Erro ao atualizar FAQ: ${error.message}`)
+        throw error
+      }
+
+      await fetchFAQs()
+      setEditingFAQId(null)
+      setFaqFormData({ question: '', answer: '' })
+      alert('FAQ atualizado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao atualizar FAQ:', error)
+    }
+  }
+
+  const handleDeleteFAQ = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este FAQ?')) return
+
+    try {
+      const { error } = await supabase
+        .from('faqs')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir FAQ:', error)
+        alert(`Erro ao excluir FAQ: ${error.message}`)
+        throw error
+      }
+
+      setFaqs(faqs.filter(f => f.id !== id))
+      alert('FAQ excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir FAQ:', error)
+    }
+  }
+
+  const startEditFAQ = (faq: FAQ) => {
+    setEditingFAQId(faq.id)
+    setFaqFormData({
+      question: faq.question,
+      answer: faq.answer,
+    })
+  }
+
+  const cancelEditFAQ = () => {
+    setEditingFAQId(null)
+    setIsCreatingFAQ(false)
+    setFaqFormData({ question: '', answer: '' })
+  }
+
+  const moveFAQ = async (id: string, direction: 'up' | 'down') => {
+    const index = faqs.findIndex(f => f.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= faqs.length) return
+
+    const faq = faqs[index]
+    const otherFAQ = faqs[newIndex]
+
+    setMovingFAQ(id)
+
+    try {
+      const tempOrder = faq.order ?? 0
+      const otherOrder = otherFAQ.order ?? 0
+
+      await supabase
+        .from('faqs')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('faqs')
+        .update({ order: tempOrder })
+        .eq('id', otherFAQ.id)
+
+      const newFAQs = [...faqs]
+      ;[newFAQs[index], newFAQs[newIndex]] = [newFAQs[newIndex], newFAQs[index]]
+      setFaqs(newFAQs)
+    } catch (error) {
+      console.error('Erro ao mover FAQ:', error)
+      alert('Erro ao mover FAQ. Tente novamente.')
+    } finally {
+      setMovingFAQ(null)
+    }
+  }
+
+  // Funções para gestão de seguradoras
+  const fetchInsurers = async () => {
+    try {
+      setIsLoadingInsurers(true)
+      console.log('🔍 A buscar seguradoras do Supabase...')
+      const { data, error } = await supabase
+        .from('insurers')
+        .select('*')
+        .order('box_number', { ascending: true })
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "insurers" não existe ainda.')
+          setInsurers([])
+          return
+        }
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} seguradoras encontradas:`, data)
+        setInsurers(data)
+      } else {
+        setInsurers([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar seguradoras:', error)
+      setInsurers([])
+    } finally {
+      setIsLoadingInsurers(false)
+    }
+  }
+
+  const handleCreateInsurer = async () => {
+    try {
+      // Verificar se a caixa já tem 4 seguradoras
+      const boxInsurers = insurers.filter(i => i.box_number === insurerFormData.box_number)
+      if (boxInsurers.length >= 4) {
+        alert(`⚠️ A caixa ${insurerFormData.box_number} já tem 4 seguradoras (máximo permitido).`)
+        return
+      }
+
+      const maxOrder = boxInsurers.length > 0 
+        ? Math.max(...boxInsurers.map(i => i.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        name: insurerFormData.name || '',
+        logo_url: insurerFormData.logo_url || null,
+        box_number: insurerFormData.box_number || 1,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('insurers')
+        .insert([insertData])
+        .select()
+
+      if (error) {
+        console.error('Erro ao criar seguradora:', error)
+        alert(`Erro ao criar seguradora: ${error.message}`)
+        throw error
+      }
+
+      await fetchInsurers()
+      setIsCreatingInsurer(false)
+      setInsurerFormData({ name: '', logo_url: '', box_number: 1 })
+      alert('Seguradora criada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao criar seguradora:', error)
+    }
+  }
+
+  const handleUpdateInsurer = async (id: string) => {
+    try {
+      // Verificar se está a mudar de caixa e se a nova caixa já tem 4 seguradoras
+      const currentInsurer = insurers.find(i => i.id === id)
+      if (currentInsurer && insurerFormData.box_number && insurerFormData.box_number !== currentInsurer.box_number) {
+        const boxInsurers = insurers.filter(i => i.box_number === insurerFormData.box_number && i.id !== id)
+        if (boxInsurers.length >= 4) {
+          alert(`⚠️ A caixa ${insurerFormData.box_number} já tem 4 seguradoras (máximo permitido).`)
+          return
+        }
+      }
+
+      const { error } = await supabase
+        .from('insurers')
+        .update({
+          name: insurerFormData.name || '',
+          logo_url: insurerFormData.logo_url || null,
+          box_number: insurerFormData.box_number || 1,
+        })
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao atualizar seguradora:', error)
+        alert(`Erro ao atualizar seguradora: ${error.message}`)
+        throw error
+      }
+
+      await fetchInsurers()
+      setEditingInsurerId(null)
+      setInsurerFormData({ name: '', logo_url: '', box_number: 1 })
+      alert('Seguradora atualizada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao atualizar seguradora:', error)
+    }
+  }
+
+  const handleDeleteInsurer = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta seguradora?')) return
+
+    try {
+      const { error } = await supabase
+        .from('insurers')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir seguradora:', error)
+        alert(`Erro ao excluir seguradora: ${error.message}`)
+        throw error
+      }
+
+      setInsurers(insurers.filter(i => i.id !== id))
+      alert('Seguradora excluída com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir seguradora:', error)
+    }
+  }
+
+  const startEditInsurer = (insurer: Insurer) => {
+    setEditingInsurerId(insurer.id)
+    setInsurerFormData({
+      name: insurer.name,
+      logo_url: insurer.logo_url || '',
+      box_number: insurer.box_number,
+    })
+  }
+
+  const cancelEditInsurer = () => {
+    setEditingInsurerId(null)
+    setIsCreatingInsurer(false)
+    setInsurerFormData({ name: '', logo_url: '', box_number: 1 })
+  }
+
+  const handleInsurerImageUpload = async (id: string, file: File) => {
+    setUploadingInsurerImage(id)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `insurer-${id}-${Math.random()}.${fileExt}`
+      const filePath = `insurers/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL do Logótipo"\n' +
+          '3. Clique em "Salvar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
+        throw uploadError
+      }
+
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      const { error: updateError } = await supabase
+        .from('insurers')
+        .update({ logo_url: data.publicUrl })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('Erro ao atualizar logótipo da seguradora:', updateError)
+        alert(`Erro ao atualizar logótipo: ${updateError.message}`)
+        throw updateError
+      }
+
+      await fetchInsurers()
+      alert('Logótipo da seguradora atualizado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer upload do logótipo da seguradora:', error)
+    } finally {
+      setUploadingInsurerImage(null)
+    }
+  }
+
+  const moveInsurer = async (id: string, direction: 'up' | 'down') => {
+    const insurer = insurers.find(i => i.id === id)
+    if (!insurer) return
+
+    const boxInsurers = insurers
+      .filter(i => i.box_number === insurer.box_number)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    
+    const index = boxInsurers.findIndex(i => i.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= boxInsurers.length) return
+
+    const otherInsurer = boxInsurers[newIndex]
+    setMovingInsurer(id)
+
+    try {
+      const tempOrder = insurer.order ?? 0
+      const otherOrder = otherInsurer.order ?? 0
+
+      await supabase
+        .from('insurers')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('insurers')
+        .update({ order: tempOrder })
+        .eq('id', otherInsurer.id)
+
+      const newInsurers = [...insurers]
+      const insurerIndex = newInsurers.findIndex(i => i.id === id)
+      const otherIndex = newInsurers.findIndex(i => i.id === otherInsurer.id)
+      
+      if (insurerIndex !== -1 && otherIndex !== -1) {
+        const temp = newInsurers[insurerIndex].order
+        newInsurers[insurerIndex].order = newInsurers[otherIndex].order
+        newInsurers[otherIndex].order = temp
+        setInsurers(newInsurers)
+      }
+    } catch (error) {
+      console.error('Erro ao mover seguradora:', error)
+      alert('Erro ao mover seguradora. Tente novamente.')
+    } finally {
+      setMovingInsurer(null)
+    }
+  }
+
+  const startEdit = (professional: Professional) => {
+    console.log('✏️ Iniciando edição de:', professional)
+    setEditingId(professional.id)
+    const photoUrl = professional.photo_url || professional.photo || professional.image || professional.foto || ''
+    // IMPORTANTE: A base de dados usa 'specialty' e 'cv', não 'speciality' e 'description'
+    const specialty = professional.specialty || professional.speciality || ''
+    const description = professional.cv || professional.description || ''
+    setFormData({
+      name: professional.name || '',
+      title: professional.title || '',
+      speciality: specialty,  // Mapear specialty para speciality no form
+      description: description,  // Mapear cv para description no form
+      photo: photoUrl,
+    })
+    console.log('📝 FormData definido:', {
+      name: professional.name || '',
+      title: professional.title || '',
+      speciality: specialty,
+      description: description,
+      photo: photoUrl,
+    })
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setIsCreating(false)
+    setFormData({ name: '', title: '', speciality: '', description: '', photo: '' })
+  }
 
   // Obter URL da imagem
-  const obterImagem = (profissional: Profissional) => {
-    // Tentar todos os campos possíveis (photo_url é o campo usado no Supabase)
-    const url = profissional.photo_url || profissional.photo || profissional.image || profissional.foto || null
-    if (!url) {
-      console.log(`📷 Sem imagem para ${profissional.name}`)
-      console.log('   Campos disponíveis:', Object.keys(profissional))
-      return null
-    }
-    
-    // Validar URL
-    let finalUrl = url.trim()
-    if (finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
-      finalUrl = finalUrl
-    } else if (finalUrl.startsWith('/')) {
-      finalUrl = finalUrl
-    } else {
-      // Se não começar com http ou /, assumir que é uma URL completa
-      finalUrl = finalUrl
-    }
-    
-    console.log(`📷 Imagem para ${profissional.name}:`, finalUrl)
-    return finalUrl
+  const obterImagem = (profissional: Professional) => {
+    return profissional.photo_url || profissional.photo || profissional.image || profissional.foto || null
   }
 
   // Obter iniciais do nome
@@ -225,1639 +1800,1715 @@ function CorpoClinicoSection() {
     return nome.substring(0, 2).toUpperCase()
   }
 
-  // Componente para o card do profissional
-  const ProfissionalCard = ({ profissional, index }: { profissional: Profissional; index: number }) => {
-    const [imagemErro, setImagemErro] = useState(false)
-    const [imagemCarregando, setImagemCarregando] = useState(true)
-    const imagemUrl = obterImagem(profissional)
-
-    useEffect(() => {
-      if (imagemUrl) {
-        console.log(`🖼️ A tentar carregar imagem para ${profissional.name}:`, imagemUrl)
-        const img = new Image()
-        img.crossOrigin = 'anonymous' // Permitir CORS se necessário
-        img.onload = () => {
-          console.log(`✅ Imagem carregada com sucesso para ${profissional.name}`)
-          setImagemCarregando(false)
-          setImagemErro(false)
-        }
-        img.onerror = (err) => {
-          console.error(`❌ Erro ao carregar imagem para ${profissional.name}:`, imagemUrl, err)
-          setImagemCarregando(false)
-          setImagemErro(true)
-        }
-        img.src = imagemUrl
-      } else {
-        console.log(`⚠️ Sem URL de imagem para ${profissional.name}, usando iniciais`)
-        setImagemCarregando(false)
-        setImagemErro(true)
-      }
-    }, [imagemUrl, profissional.name])
-
+  if (isLoading && activeTab === 'profissionais') {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: index * 0.1 }}
-        className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors shadow-md hover:shadow-lg"
-      >
-        <div className="flex flex-col items-center md:items-start">
-          <div className="mb-4">
-            <div className="w-32 h-32 md:w-28 md:h-28 rounded-full bg-clinica-primary border-2 border-clinica-menu flex items-center justify-center text-2xl font-bold text-clinica-bg overflow-hidden relative">
-              {imagemUrl && !imagemErro && !imagemCarregando ? (
-                <img
-                  src={imagemUrl}
-                  alt={profissional.name}
-                  className="w-full h-full rounded-full object-cover"
-                  onError={() => setImagemErro(true)}
-                  loading="lazy"
-                />
-              ) : (
-                obterIniciais(profissional.name)
-              )}
-            </div>
-          </div>
+      <div className="min-h-screen bg-robinhood-dark flex items-center justify-center">
+        <p className="text-white">A carregar...</p>
+      </div>
+    )
+  }
 
-          <div className="text-center md:text-left w-full">
-            <h2 className="text-xl md:text-2xl font-bold mb-2 text-clinica-text">{profissional.name}</h2>
-            {profissional.title && (
-              <p className="text-clinica-text text-sm mb-2 font-semibold">{profissional.title}</p>
-            )}
-            <p className="text-clinica-text text-sm mb-3 font-medium">{profissional.speciality || profissional.specialty || 'Sem especialidade'}</p>
-            {profissional.description && (
-              <p className="text-clinica-text text-sm mb-4 leading-relaxed line-clamp-3">
-                {profissional.description}
-              </p>
-            )}
-            
-            <button 
-              onClick={() => setProfissionalSelecionado(profissional)}
-              className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-clinica-cta text-clinica-text px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors text-sm shadow-md hover:shadow-lg"
+  if (isLoadingServices && activeTab === 'servicos') {
+    return (
+      <div className="min-h-screen bg-robinhood-dark flex items-center justify-center">
+        <p className="text-white">A carregar serviços...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-robinhood-dark py-12 px-4">
+      <div className="container mx-auto max-w-6xl">
+        {/* Tabs para alternar entre Profissionais, Serviços e Depoimentos */}
+        <div className="mb-8">
+          <div className="flex gap-4 border-b border-robinhood-border">
+            <button
+              onClick={() => setActiveTab('profissionais')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'profissionais'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
             >
-              <FileText className="w-4 h-4" />
-              Ver CV Completo
+              Profissionais
+            </button>
+            <button
+              onClick={() => setActiveTab('servicos')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'servicos'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Serviços
+            </button>
+            <button
+              onClick={() => setActiveTab('depoimentos')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'depoimentos'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Depoimentos
+            </button>
+            <button
+              onClick={() => setActiveTab('sobre-nos')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'sobre-nos'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Sobre Nós
+            </button>
+            <button
+              onClick={() => setActiveTab('faqs')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'faqs'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              FAQs
+            </button>
+            <button
+              onClick={() => setActiveTab('seguradoras')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'seguradoras'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Seguradoras
             </button>
           </div>
         </div>
-      </motion.div>
-    )
-  }
 
-  return (
-    <section id="corpo-clinico" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Corpo Clínico</h2>
-          <p className="text-lg text-clinica-text mb-3">Conheça a nossa equipa de psicólogos e psiquiatras experientes</p>
-          <p className="text-lg font-semibold text-clinica-menu">Seleccione a especialidade</p>
-        </motion.div>
-
-        {/* Filtro de Categorias - DROPDOWN */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-8 flex justify-center"
-        >
-          <div className="relative">
-            <select
-              value={categoriaSelecionada}
-              onChange={(e) => {
-                console.log('📋 Categoria selecionada:', e.target.value)
-                setCategoriaSelecionada(e.target.value)
-              }}
-              className="appearance-none bg-clinica-accent border border-clinica-primary text-clinica-text px-6 py-2 pr-10 rounded-lg font-medium transition-all duration-200 hover:border-clinica-menu focus:outline-none focus:border-clinica-menu cursor-pointer min-w-[250px] shadow-md"
-            >
-              <option value="Todas">Todas</option>
-              {categorias.length > 0 ? (
-                categorias.map((categoria) => (
-                  <option 
-                    key={categoria} 
-                    value={categoria}
-                  >
-                    {categoria}
-                  </option>
-                ))
-              ) : (
-                <option disabled>Nenhuma categoria disponível</option>
-              )}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-clinica-text opacity-60 z-0">
-              <ChevronDown className="w-5 h-5" />
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Carrossel de Profissionais */}
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-clinica-text opacity-70 text-lg">A carregar profissionais...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <p className="text-red-600 text-lg">Erro: {error}</p>
-          </div>
-        ) : profissionaisFiltrados.length > 0 ? (
-          <div className="relative">
-            {/* Container do Carrossel */}
-            <div className="overflow-hidden">
-              <motion.div
-                key={currentIndex}
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.5 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {profissionaisVisiveis.map((profissional: Profissional, index: number) => (
-                  <ProfissionalCard 
-                    key={profissional.id} 
-                    profissional={profissional} 
-                    index={index} 
-                  />
-                ))}
-              </motion.div>
-            </div>
-
-            {/* Botões de Navegação */}
-            {totalSlides > 1 && (
-              <>
+        {/* SECÇÃO PROFISSIONAIS */}
+        {activeTab === 'profissionais' && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">
+                Gestão de <span className="text-robinhood-green">Profissionais</span>
+              </h1>
+              {!isCreating && (
                 <button
-                  onClick={prevSlide}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 bg-clinica-cta text-clinica-text p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-10"
-                  aria-label="Anterior"
+                  onClick={() => setIsCreating(true)}
+                  className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  <Plus className="w-5 h-5" />
+                  Adicionar Profissional
                 </button>
-                <button
-                  onClick={nextSlide}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 bg-clinica-cta text-clinica-text p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-10"
-                  aria-label="Próximo"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </>
-            )}
-
-            {/* Indicadores de Slide */}
-            {totalSlides > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
-                {Array.from({ length: totalSlides }).map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentIndex(index)}
-                    className={`h-2 rounded-full transition-all ${
-                      index === currentIndex
-                        ? 'bg-clinica-cta w-8'
-                        : 'bg-clinica-primary opacity-40 w-2 hover:opacity-60'
-                    }`}
-                    aria-label={`Ir para slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12"
-          >
-            <p className="text-clinica-text opacity-70 text-lg">
-              {profissionais.length === 0 
-                ? 'Nenhum profissional encontrado.' 
-                : 'Nenhum profissional encontrado nesta categoria.'}
-            </p>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Modal do CV Completo */}
-      {profissionalSelecionado && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setProfissionalSelecionado(null)}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-3xl md:text-4xl font-bold text-clinica-text">
-                {profissionalSelecionado.name}
-              </h2>
-              <button
-                onClick={() => setProfissionalSelecionado(null)}
-                className="text-clinica-text opacity-60 hover:opacity-100 transition-colors p-2"
-                aria-label="Fechar"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Foto e Informações Básicas */}
-              <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="w-32 h-32 rounded-full bg-clinica-primary border-2 border-clinica-menu flex items-center justify-center text-3xl font-bold text-clinica-bg overflow-hidden flex-shrink-0">
-                  {obterImagem(profissionalSelecionado) ? (
-                    <img
-                      src={obterImagem(profissionalSelecionado)!}
-                      alt={profissionalSelecionado.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    obterIniciais(profissionalSelecionado.name)
-                  )}
-                </div>
-                <div className="flex-1">
-                  {profissionalSelecionado.title && (
-                    <p className="text-clinica-text text-lg mb-2 font-semibold">
-                      {profissionalSelecionado.title}
-                    </p>
-                  )}
-                  <p className="text-clinica-text text-base mb-2 font-medium">
-                    {profissionalSelecionado.speciality || profissionalSelecionado.specialty || 'Sem especialidade'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Descrição/CV Completo */}
-              {(profissionalSelecionado.cv || profissionalSelecionado.description) ? (
-                <div>
-                  <h3 className="text-xl font-bold text-clinica-text mb-3">Currículo</h3>
-                  <div className="text-clinica-text leading-relaxed whitespace-pre-line">
-                    {profissionalSelecionado.cv || profissionalSelecionado.description}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-clinica-text opacity-60 italic">
-                  Informação adicional não disponível.
-                </div>
               )}
             </div>
-          </motion.div>
-        </div>
-      )}
-    </section>
-  )
-}
 
-// Componente da secção Depoimentos
-function DepoimentosSection() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [itemsPerView, setItemsPerView] = useState(3)
-
-  // Buscar depoimentos da base de dados
-  useEffect(() => {
-    async function fetchTestimonials() {
-      try {
-        setLoading(true)
-        console.log('🔍 A buscar depoimentos do Supabase...')
-        const { data, error: fetchError } = await supabase
-          .from('testimonials')
-          .select('*')
-          .order('order', { ascending: true, nullsFirst: false })
-          .order('created_at', { ascending: false })
-
-        if (fetchError) {
-          // Se a tabela não existir, usar depoimentos padrão
-          if (fetchError.message.includes('does not exist') || fetchError.message.includes('relation')) {
-            console.warn('⚠️ Tabela "testimonials" não existe ainda. Usando depoimentos padrão.')
-            setTestimonials([
-              { id: '1', name: 'Maria S.', text: 'Excelente atendimento e profissionais muito competentes.', rating: 5, order: 1 },
-              { id: '2', name: 'João P.', text: 'A terapia mudou a minha vida. Recomendo vivamente.', rating: 5, order: 2 },
-              { id: '3', name: 'Ana L.', text: 'Ambiente acolhedor e tratamento de qualidade.', rating: 5, order: 3 },
-            ])
-            setLoading(false)
-            return
-          }
-          throw fetchError
-        }
-
-        if (data) {
-          console.log(`✅ ${data.length} depoimentos encontrados:`, data)
-          setTestimonials(data)
-        } else {
-          console.warn('⚠️ Nenhum dado retornado')
-          setTestimonials([])
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar depoimentos')
-        console.error('❌ Erro ao buscar depoimentos:', err)
-        // Usar depoimentos padrão em caso de erro
-        setTestimonials([
-          { id: '1', name: 'Maria S.', text: 'Excelente atendimento e profissionais muito competentes.', rating: 5, order: 1 },
-          { id: '2', name: 'João P.', text: 'A terapia mudou a minha vida. Recomendo vivamente.', rating: 5, order: 2 },
-          { id: '3', name: 'Ana L.', text: 'Ambiente acolhedor e tratamento de qualidade.', rating: 5, order: 3 },
-        ])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchTestimonials()
-  }, [])
-
-  // Ajustar items por view baseado no tamanho da tela
-  useEffect(() => {
-    const updateItemsPerView = () => {
-      if (window.innerWidth < 768) {
-        setItemsPerView(1)
-      } else if (window.innerWidth < 1024) {
-        setItemsPerView(2)
-      } else {
-        setItemsPerView(3)
-      }
-    }
-
-    updateItemsPerView()
-    window.addEventListener('resize', updateItemsPerView)
-    return () => window.removeEventListener('resize', updateItemsPerView)
-  }, [])
-
-  // Calcular total de slides
-  const totalSlides = Math.ceil(testimonials.length / itemsPerView)
-
-  // Navegação do carrossel
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % totalSlides)
-  }
-
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides)
-  }
-
-  // Obter depoimentos visíveis no slide atual
-  const testimonialsVisiveis = testimonials.slice(
-    currentIndex * itemsPerView,
-    currentIndex * itemsPerView + itemsPerView
-  )
-
-  // Componente para o card do depoimento
-  const TestimonialCard = ({ testimonial, index }: { testimonial: Testimonial; index: number }) => {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: index * 0.1 }}
-        className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 shadow-md hover:shadow-lg transition-all h-full flex flex-col"
-      >
-        <div className="flex mb-4">
-          {[...Array(testimonial.rating)].map((_, i) => (
-            <Star key={i} className="w-5 h-5 text-clinica-cta fill-clinica-cta" />
-          ))}
-        </div>
-        <p className="text-clinica-text mb-4 italic flex-grow">"{testimonial.text}"</p>
-        <p className="text-clinica-text font-semibold">- {testimonial.name}</p>
-      </motion.div>
-    )
-  }
-
-  return (
-    <section id="depoimentos" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Depoimentos</h2>
-          <p className="text-lg text-clinica-text">O que os nossos pacientes dizem sobre nós</p>
-        </motion.div>
-
-        {/* Carrossel de Depoimentos */}
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-clinica-text opacity-70 text-lg">A carregar depoimentos...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <p className="text-red-600 text-lg">Erro: {error}</p>
-          </div>
-        ) : testimonials.length > 0 ? (
-          <div className="relative">
-            {/* Container do Carrossel */}
-            <div className="overflow-hidden">
-              <motion.div
-                key={currentIndex}
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.5 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {testimonialsVisiveis.map((testimonial: Testimonial, index: number) => (
-                  <TestimonialCard 
-                    key={testimonial.id} 
-                    testimonial={testimonial} 
-                    index={index} 
-                  />
-                ))}
-              </motion.div>
-            </div>
-
-            {/* Botões de Navegação */}
-            {totalSlides > 1 && (
-              <>
-                <button
-                  onClick={prevSlide}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 bg-clinica-cta text-clinica-text p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-10"
-                  aria-label="Anterior"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button
-                  onClick={nextSlide}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 bg-clinica-cta text-clinica-text p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-10"
-                  aria-label="Próximo"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </>
-            )}
-
-            {/* Indicadores de Slide */}
-            {totalSlides > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
-                {Array.from({ length: totalSlides }).map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentIndex(index)}
-                    className={`h-2 rounded-full transition-all ${
-                      index === currentIndex
-                        ? 'bg-clinica-cta w-8'
-                        : 'bg-clinica-primary opacity-40 w-2 hover:opacity-60'
-                    }`}
-                    aria-label={`Ir para slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
+        {/* Create Form */}
+        {isCreating && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-robinhood-card border border-robinhood-border rounded-xl p-6 mb-6"
           >
-            <p className="text-clinica-text opacity-70 text-lg">
-              Nenhum depoimento encontrado.
-            </p>
+            <h2 className="text-2xl font-bold text-white mb-4">Novo Profissional</h2>
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Nome"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                />
+                <input
+                  type="text"
+                  placeholder="Título (opcional)"
+                  value={formData.title || ''}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Especialidade"
+                value={formData.speciality || ''}
+                onChange={(e) => setFormData({ ...formData, speciality: e.target.value })}
+                className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                required
+              />
+              <textarea
+                placeholder="Descrição/CV (opcional)"
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={4}
+                className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+              />
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  URL da Foto (opcional) - Cole aqui a URL da imagem
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  value={formData.photo || ''}
+                  onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
+                  className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCreate}
+                  className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-semibold"
+                >
+                  <Save className="w-4 h-4" />
+                  Salvar
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold"
+                >
+                  <X className="w-4 h-4" />
+                  Cancelar
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
-      </div>
-    </section>
-  )
-}
 
-// Componente da secção FAQ
-function FAQSection() {
-  const [faqs, setFaqs] = useState<FAQ[]>([])
-  const [loading, setLoading] = useState(true)
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
-
-  useEffect(() => {
-    async function fetchFAQs() {
-      try {
-        setLoading(true)
-        console.log('🔍 A buscar FAQs do Supabase...')
-        const { data, error } = await supabase
-          .from('faqs')
-          .select('*')
-          .order('order', { ascending: true, nullsFirst: false })
-          .order('created_at', { ascending: true })
-
-        if (error) {
-          if (error.message.includes('does not exist') || error.message.includes('relation')) {
-            console.warn('⚠️ Tabela "faqs" não existe ainda. Usando FAQs padrão.')
-            setFaqs([
-              { id: '1', question: 'Como posso agendar uma consulta?', answer: 'Pode agendar através do nosso site, por telefone ou email.', order: 1 },
-              { id: '2', question: 'Aceitam seguros de saúde?', answer: 'Sim, aceitamos a maioria dos seguros de saúde nacionais.', order: 2 },
-              { id: '3', question: 'Qual a duração de uma sessão?', answer: 'As sessões têm normalmente a duração de 50 minutos.', order: 3 },
-              { id: '4', question: 'As consultas são confidenciais?', answer: 'Sim, garantimos total confidencialidade e sigilo profissional.', order: 4 },
-            ])
-            setLoading(false)
-            return
-          }
-          throw error
-        }
-
-        if (data && data.length > 0) {
-          console.log(`✅ ${data.length} FAQs encontrados:`, data)
-          setFaqs(data)
-        } else {
-          console.warn('⚠️ Nenhum FAQ encontrado')
-          setFaqs([
-            { id: '1', question: 'Como posso agendar uma consulta?', answer: 'Pode agendar através do nosso site, por telefone ou email.', order: 1 },
-            { id: '2', question: 'Aceitam seguros de saúde?', answer: 'Sim, aceitamos a maioria dos seguros de saúde nacionais.', order: 2 },
-            { id: '3', question: 'Qual a duração de uma sessão?', answer: 'As sessões têm normalmente a duração de 50 minutos.', order: 3 },
-            { id: '4', question: 'As consultas são confidenciais?', answer: 'Sim, garantimos total confidencialidade e sigilo profissional.', order: 4 },
-          ])
-        }
-      } catch (err) {
-        console.error('❌ Erro ao buscar FAQs:', err)
-        setFaqs([
-          { id: '1', question: 'Como posso agendar uma consulta?', answer: 'Pode agendar através do nosso site, por telefone ou email.', order: 1 },
-          { id: '2', question: 'Aceitam seguros de saúde?', answer: 'Sim, aceitamos a maioria dos seguros de saúde nacionais.', order: 2 },
-          { id: '3', question: 'Qual a duração de uma sessão?', answer: 'As sessões têm normalmente a duração de 50 minutos.', order: 3 },
-          { id: '4', question: 'As consultas são confidenciais?', answer: 'Sim, garantimos total confidencialidade e sigilo profissional.', order: 4 },
-        ])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchFAQs()
-  }, [])
-
-  const toggleFAQ = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index)
-  }
-
-  return (
-    <section id="faq" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-      <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Perguntas Frequentes</h2>
-          <p className="text-lg text-clinica-text">Respostas às questões mais comuns</p>
-        </motion.div>
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-clinica-text opacity-70">A carregar...</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {faqs.map((faq, index) => (
+        {/* Professionals List */}
+        <div className="space-y-4">
+          {professionals.map((professional, index) => {
+            const imagemUrl = obterImagem(professional)
+            return (
               <motion.div
-                key={faq.id}
+                key={professional.id}
                 initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.05 }}
-                className="bg-clinica-accent border border-clinica-primary rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-robinhood-card border border-robinhood-border rounded-xl p-6"
               >
-                <button
-                  onClick={() => toggleFAQ(index)}
-                  className="w-full flex items-center justify-between p-6 text-left hover:bg-clinica-primary/5 transition-colors"
-                >
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-clinica-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <HelpCircle className="w-5 h-5 text-clinica-primary" />
-                    </div>
-                    <h3 className="text-lg md:text-xl font-bold text-clinica-text pr-4">
-                      {faq.question}
-                    </h3>
-                  </div>
-                  <div className="flex-shrink-0">
-                    {openIndex === index ? (
-                      <ChevronUp className="w-6 h-6 text-clinica-primary transition-transform" />
-                    ) : (
-                      <ChevronDown className="w-6 h-6 text-clinica-primary transition-transform" />
-                    )}
-                  </div>
-                </button>
-                {openIndex === index && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-6 pb-6 pt-0">
-                      <div className="pl-14 border-l-2 border-clinica-primary/30">
-                        <p className="text-clinica-text leading-relaxed text-base md:text-lg">
-                          {faq.answer}
-                        </p>
+                {editingId === professional.id ? (
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Nome</label>
+                        <input
+                          type="text"
+                          value={formData.name || ''}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            const newValue = e.target.value
+                            console.log('✏️ Nome alterado:', newValue)
+                            setFormData(prev => ({ ...prev, name: newValue }))
+                          }}
+                          onKeyDown={(e) => {
+                            e.stopPropagation()
+                          }}
+                          onKeyUp={(e) => {
+                            e.stopPropagation()
+                          }}
+                          onFocus={(e) => {
+                            e.stopPropagation()
+                            console.log('🔵 Campo Nome focado')
+                            e.target.select()
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
+                          placeholder="Nome completo"
+                          autoComplete="off"
+                          style={{ pointerEvents: 'auto', userSelect: 'text' }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Título (opcional)</label>
+                        <input
+                          type="text"
+                          value={formData.title || ''}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            const newValue = e.target.value
+                            console.log('✏️ Título alterado:', newValue)
+                            setFormData(prev => ({ ...prev, title: newValue }))
+                          }}
+                          onKeyDown={(e) => {
+                            e.stopPropagation()
+                          }}
+                          onKeyUp={(e) => {
+                            e.stopPropagation()
+                          }}
+                          onFocus={(e) => {
+                            e.stopPropagation()
+                            console.log('🔵 Campo Título focado')
+                            e.target.select()
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
+                          placeholder="Ex: Médica Psiquiatra"
+                          autoComplete="off"
+                          style={{ pointerEvents: 'auto', userSelect: 'text' }}
+                        />
                       </div>
                     </div>
-                  </motion.div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Especialidade</label>
+                      <input
+                        type="text"
+                        value={formData.speciality || ''}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          const newValue = e.target.value
+                          console.log('✏️ Especialidade alterada:', newValue)
+                          setFormData(prev => ({ ...prev, speciality: newValue }))
+                        }}
+                        onKeyDown={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onKeyUp={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onFocus={(e) => {
+                          e.stopPropagation()
+                          console.log('🔵 Campo Especialidade focado')
+                          e.target.select()
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
+                        placeholder="Ex: Psiquiatria"
+                        autoComplete="off"
+                        style={{ pointerEvents: 'auto', userSelect: 'text' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Descrição/CV (opcional)</label>
+                      <textarea
+                        value={formData.description || ''}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          const newValue = e.target.value
+                          console.log('✏️ Descrição alterada:', newValue)
+                          setFormData(prev => ({ ...prev, description: newValue }))
+                        }}
+                        onKeyDown={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onKeyUp={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onFocus={(e) => {
+                          e.stopPropagation()
+                          console.log('🔵 Campo Descrição focado')
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
+                        rows={4}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green resize-y"
+                        placeholder="Descrição ou currículo completo do profissional..."
+                        style={{ pointerEvents: 'auto', userSelect: 'text' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        URL da Foto - Cole aqui a URL da imagem
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://exemplo.com/imagem.jpg"
+                        value={formData.photo || ''}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          const newValue = e.target.value
+                          console.log('✏️ URL da foto alterada:', newValue)
+                          setFormData(prev => ({ ...prev, photo: newValue }))
+                        }}
+                        onKeyDown={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onKeyUp={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onFocus={(e) => {
+                          e.stopPropagation()
+                          console.log('🔵 Campo URL da Foto focado')
+                          e.target.select()
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-robinhood-green focus:ring-2 focus:ring-robinhood-green"
+                        autoComplete="off"
+                        style={{ pointerEvents: 'auto', userSelect: 'text' }}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleUpdate(professional.id)}
+                        className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-semibold"
+                      >
+                        <Save className="w-4 h-4" />
+                        Salvar
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold"
+                      >
+                        <X className="w-4 h-4" />
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-6">
+                    {/* Botões de Ordenação */}
+                    <div className="flex flex-col gap-2 justify-center">
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          console.log('🔼 Botão mover para cima clicado para índice:', index, 'Profissional:', professional.name)
+                          if (index === 0) {
+                            alert('Este profissional já está no topo!')
+                            return
+                          }
+                          if (movingProfessional === professional.id) {
+                            console.log('⚠️ Já está a mover este profissional')
+                            return
+                          }
+                          try {
+                            await moveUp(index)
+                          } catch (error) {
+                            console.error('Erro ao mover:', error)
+                          }
+                        }}
+                        disabled={index === 0 || movingProfessional === professional.id}
+                        className={`p-2 rounded-lg transition-all ${
+                          index === 0 || movingProfessional === professional.id
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400 hover:scale-110'
+                        }`}
+                        style={{ 
+                          pointerEvents: index === 0 || movingProfessional === professional.id ? 'none' : 'auto',
+                          cursor: index === 0 || movingProfessional === professional.id ? 'not-allowed' : 'pointer'
+                        }}
+                        title={index === 0 ? 'Já está no topo' : 'Mover para cima'}
+                        aria-label="Mover para cima"
+                      >
+                        {movingProfessional === professional.id ? (
+                          <span className="text-xs animate-pulse">...</span>
+                        ) : (
+                          <ArrowUp className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          console.log('🔽 Botão mover para baixo clicado para índice:', index, 'Profissional:', professional.name)
+                          if (index === professionals.length - 1) {
+                            alert('Este profissional já está no final!')
+                            return
+                          }
+                          if (movingProfessional === professional.id) {
+                            console.log('⚠️ Já está a mover este profissional')
+                            return
+                          }
+                          try {
+                            await moveDown(index)
+                          } catch (error) {
+                            console.error('Erro ao mover:', error)
+                          }
+                        }}
+                        disabled={index === professionals.length - 1 || movingProfessional === professional.id}
+                        className={`p-2 rounded-lg transition-all ${
+                          index === professionals.length - 1 || movingProfessional === professional.id
+                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-gray-600 text-white hover:bg-gray-500 active:bg-gray-400 hover:scale-110'
+                        }`}
+                        style={{ 
+                          pointerEvents: index === professionals.length - 1 || movingProfessional === professional.id ? 'none' : 'auto',
+                          cursor: index === professionals.length - 1 || movingProfessional === professional.id ? 'not-allowed' : 'pointer'
+                        }}
+                        title={index === professionals.length - 1 ? 'Já está no final' : 'Mover para baixo'}
+                        aria-label="Mover para baixo"
+                      >
+                        {movingProfessional === professional.id ? (
+                          <span className="text-xs animate-pulse">...</span>
+                        ) : (
+                          <ArrowDown className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                    <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-robinhood-green flex-shrink-0 bg-robinhood-border flex items-center justify-center">
+                      {imagemUrl ? (
+                        <img
+                          src={imagemUrl}
+                          alt={professional.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                            const parent = target.parentElement
+                            if (parent) {
+                              parent.innerHTML = `<span class="text-robinhood-green text-xl font-bold">${obterIniciais(professional.name)}</span>`
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="text-robinhood-green text-xl font-bold">
+                          {obterIniciais(professional.name)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-bold text-white mb-1">{professional.name}</h3>
+                      {professional.title && (
+                        <p className="text-robinhood-green mb-2">{professional.title}</p>
+                      )}
+                      <p className="text-gray-300 mb-2">{professional.specialty || professional.speciality}</p>
+                      {(professional.cv || professional.description) && (
+                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">{professional.cv || professional.description}</p>
+                      )}
+                      <div className="flex gap-2 flex-wrap">
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handlePhotoUpload(professional.id, file)
+                            }}
+                            disabled={uploadingPhoto === professional.id}
+                          />
+                          <span className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                            {uploadingPhoto === professional.id ? (
+                              'A fazer upload...'
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4" />
+                                Upload Foto
+                              </>
+                            )}
+                          </span>
+                        </label>
+                        <button
+                          onClick={() => {
+                            startEdit(professional)
+                            alert('💡 Dica: Cole a URL da imagem no campo "URL da Foto" e clique em "Salvar"')
+                          }}
+                          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                          title="Colar URL da imagem diretamente"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Colar URL
+                        </button>
+                        <button
+                          onClick={() => startEdit(professional)}
+                          className="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDelete(professional.id)}
+                          className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </motion.div>
-            ))}
+            )
+          })}
+        </div>
+
+        {professionals.length === 0 && !isCreating && (
+          <div className="text-center py-12">
+            <p className="text-gray-400 mb-4">Nenhum profissional cadastrado ainda.</p>
+            <p className="text-gray-500 text-sm">
+              Abra a consola do navegador (F12) para ver os logs de debug.
+            </p>
           </div>
         )}
-      </div>
-    </section>
-  )
-}
+          </>
+        )}
 
-// Componente da secção Seguradoras
-function SeguradorasSection() {
-  const [insurers, setInsurers] = useState<Insurer[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchInsurers() {
-      try {
-        setLoading(true)
-        console.log('🔍 A buscar seguradoras do Supabase...')
-        const { data, error } = await supabase
-          .from('insurers')
-          .select('*')
-          .order('box_number', { ascending: true })
-          .order('order', { ascending: true, nullsFirst: false })
-          .order('created_at', { ascending: true })
-
-        if (error) {
-          if (error.message.includes('does not exist') || error.message.includes('relation')) {
-            console.warn('⚠️ Tabela "insurers" não existe ainda. Usando seguradoras padrão.')
-            setInsurers([
-              { id: '1', name: 'Medicare', logo_url: '', box_number: 1, order: 1 },
-              { id: '2', name: 'AdvanceCare', logo_url: '', box_number: 1, order: 2 },
-              { id: '3', name: 'Multicare', logo_url: '', box_number: 1, order: 3 },
-              { id: '4', name: 'Allianz Care', logo_url: '', box_number: 1, order: 4 },
-            ])
-            setLoading(false)
-            return
-          }
-          throw error
-        }
-
-        if (data && data.length > 0) {
-          console.log(`✅ ${data.length} seguradoras encontradas:`, data)
-          setInsurers(data)
-        } else {
-          console.warn('⚠️ Nenhuma seguradora encontrada')
-          setInsurers([
-            { id: '1', name: 'Medicare', logo_url: '', box_number: 1, order: 1 },
-            { id: '2', name: 'AdvanceCare', logo_url: '', box_number: 1, order: 2 },
-            { id: '3', name: 'Multicare', logo_url: '', box_number: 1, order: 3 },
-            { id: '4', name: 'Allianz Care', logo_url: '', box_number: 1, order: 4 },
-          ])
-        }
-      } catch (err) {
-        console.error('❌ Erro ao buscar seguradoras:', err)
-        setInsurers([
-          { id: '1', name: 'Medicare', logo_url: '', box_number: 1, order: 1 },
-          { id: '2', name: 'AdvanceCare', logo_url: '', box_number: 1, order: 2 },
-          { id: '3', name: 'Multicare', logo_url: '', box_number: 1, order: 3 },
-          { id: '4', name: 'Allianz Care', logo_url: '', box_number: 1, order: 4 },
-        ])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchInsurers()
-  }, [])
-
-  // Agrupar seguradoras por caixa (box_number)
-  const insurersByBox = useMemo(() => {
-    const boxes: { [key: number]: Insurer[] } = { 1: [], 2: [], 3: [] }
-    insurers.forEach(insurer => {
-      if (insurer.box_number >= 1 && insurer.box_number <= 3) {
-        boxes[insurer.box_number].push(insurer)
-      }
-    })
-    return boxes
-  }, [insurers])
-
-  return (
-    <section id="seguradoras" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Seguradoras</h2>
-          <p className="text-lg text-clinica-text font-medium">Aceitamos os principais seguros de saúde</p>
-        </motion.div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-clinica-text opacity-70">A carregar seguradoras...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((boxNum) => {
-              const boxInsurers = insurersByBox[boxNum] || []
-              // Limitar a 4 imagens por caixa
-              const displayInsurers = boxInsurers.slice(0, 4)
-              
-              return (
-                <motion.div
-                  key={boxNum}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: boxNum * 0.1 }}
-                  className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors"
+        {/* SECÇÃO SERVIÇOS */}
+        {activeTab === 'servicos' && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">
+                Gestão de <span className="text-robinhood-green">Serviços</span>
+              </h1>
+              {!isCreatingService && (
+                <button
+                  onClick={() => setIsCreatingService(true)}
+                  className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
                 >
-                  {/* Grid de imagens redondas - ajusta automaticamente se tiver menos de 4 */}
-                  <div className={`grid gap-4 ${
-                    displayInsurers.length === 1 ? 'grid-cols-1' :
-                    displayInsurers.length === 2 ? 'grid-cols-2' :
-                    displayInsurers.length === 3 ? 'grid-cols-3' :
-                    'grid-cols-2' // 4 imagens: 2x2
-                  }`}>
-                    {displayInsurers.map((insurer, index) => (
-                      <motion.div
-                        key={insurer.id}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.4, delay: index * 0.1 }}
-                        className="flex flex-col items-center"
-                      >
-                        {/* Imagem redonda */}
-                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-clinica-accent border-2 border-clinica-primary flex items-center justify-center overflow-hidden mb-2 shadow-md hover:shadow-lg transition-shadow">
-                          {insurer.logo_url ? (
+                  <Plus className="w-5 h-5" />
+                  Adicionar Serviço
+                </button>
+              )}
+            </div>
+
+            {/* Formulário de Criação de Serviço */}
+            {isCreatingService && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-robinhood-card border border-robinhood-border rounded-xl p-6 mb-6"
+              >
+                <h2 className="text-2xl font-bold text-white mb-4">Novo Serviço</h2>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Título do Serviço"
+                    value={serviceFormData.title || ''}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, title: e.target.value })}
+                    className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                  />
+                  <textarea
+                    placeholder="Descrição do Serviço"
+                    value={serviceFormData.description || ''}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, description: e.target.value })}
+                    rows={3}
+                    className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                  />
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      URL da Imagem de Fundo - Cole aqui a URL da imagem
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://exemplo.com/imagem.jpg"
+                      value={serviceFormData.image_url || ''}
+                      onChange={(e) => setServiceFormData({ ...serviceFormData, image_url: e.target.value })}
+                      className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCreateService}
+                      className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-semibold"
+                    >
+                      <Save className="w-4 h-4" />
+                      Criar Serviço
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsCreatingService(false)
+                        setServiceFormData({ title: '', description: '', image_url: '' })
+                      }}
+                      className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Lista de Serviços */}
+            <div className="space-y-4">
+              {services.map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-robinhood-card border border-robinhood-border rounded-xl p-6"
+                >
+                  {editingServiceId === service.id ? (
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        value={serviceFormData.title || ''}
+                        onChange={(e) => setServiceFormData({ ...serviceFormData, title: e.target.value })}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                        placeholder="Título"
+                      />
+                      <textarea
+                        value={serviceFormData.description || ''}
+                        onChange={(e) => setServiceFormData({ ...serviceFormData, description: e.target.value })}
+                        rows={3}
+                        className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                        placeholder="Descrição"
+                      />
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">
+                          URL da Imagem de Fundo
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://exemplo.com/imagem.jpg"
+                          value={serviceFormData.image_url || ''}
+                          onChange={(e) => setServiceFormData({ ...serviceFormData, image_url: e.target.value })}
+                          className="w-full bg-robinhood-dark border border-robinhood-border rounded-lg px-4 py-2 text-white"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdateService(service.id)}
+                          className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-4 py-2 rounded-lg font-semibold"
+                        >
+                          <Save className="w-4 h-4" />
+                          Salvar
+                        </button>
+                        <button
+                          onClick={cancelEditService}
+                          className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold"
+                        >
+                          <X className="w-4 h-4" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-6">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-2">{service.title}</h3>
+                        <p className="text-gray-300 mb-4">{service.description}</p>
+                        {service.image_url && (
+                          <div className="mb-4">
+                            <p className="text-sm text-gray-400 mb-2">Imagem de fundo:</p>
                             <img
-                              src={insurer.logo_url}
-                              alt={insurer.name}
-                              className="w-full h-full rounded-full object-cover"
+                              src={service.image_url}
+                              alt={service.title}
+                              className="w-full h-32 object-cover rounded-lg"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement
                                 target.style.display = 'none'
-                                const parent = target.parentElement
-                                if (parent) {
-                                  parent.innerHTML = `<div class="w-full h-full rounded-full bg-clinica-primary/10 flex items-center justify-center"><span class="text-clinica-primary font-bold text-sm">${insurer.name.substring(0, 2).toUpperCase()}</span></div>`
-                                }
                               }}
                             />
-                          ) : (
-                            <div className="w-full h-full rounded-full bg-clinica-primary/10 flex items-center justify-center">
-                              <span className="text-clinica-primary font-bold text-sm md:text-base">
-                                {insurer.name.substring(0, 2).toUpperCase()}
-                              </span>
-                            </div>
-                          )}
+                          </div>
+                        )}
+                        <div className="flex gap-2 flex-wrap">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleServiceImageUpload(service.id, file)
+                              }}
+                              disabled={uploadingServiceImage === service.id}
+                            />
+                            <span className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                              {uploadingServiceImage === service.id ? (
+                                'A fazer upload...'
+                              ) : (
+                                <>
+                                  <Upload className="w-4 h-4" />
+                                  Upload Imagem
+                                </>
+                              )}
+                            </span>
+                          </label>
+                          <button
+                            onClick={() => {
+                              startEditService(service)
+                              alert('💡 Dica: Cole a URL da imagem no campo "URL da Imagem" e clique em "Salvar"')
+                            }}
+                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                            title="Colar URL da imagem diretamente"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Colar URL
+                          </button>
+                          <button
+                            onClick={() => startEditService(service)}
+                            className="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(service.id)}
+                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Excluir
+                          </button>
                         </div>
-                        {/* Label */}
-                        <p className="text-clinica-text text-xs md:text-sm font-semibold text-center mt-1">
-                          {insurer.name}
-                        </p>
-                      </motion.div>
-                    ))}
-                  </div>
-                  
-                  {/* Mensagem se não houver seguradoras nesta caixa */}
-                  {displayInsurers.length === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-clinica-text opacity-50 text-sm">Nenhuma seguradora nesta caixa</p>
+                      </div>
                     </div>
                   )}
                 </motion.div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-// Componente da secção Sobre Nós
-function SobreNosSection() {
-  const [mainText, setMainText] = useState<string>('')
-  const [features, setFeatures] = useState<AboutFeature[]>([])
-  const [loading, setLoading] = useState(true)
-
-  // Mapeamento de nomes de ícones para componentes
-  const iconMap: { [key: string]: any } = {
-    Users,
-    Heart,
-    Shield,
-    MessageSquare,
-    BookOpen,
-    HelpCircle,
-    Building2,
-    FileCheck,
-    Stethoscope,
-    Clock,
-    Mail,
-    MapPin,
-  }
-
-  // Buscar dados da base de dados
-  useEffect(() => {
-    async function fetchAboutData() {
-      try {
-        setLoading(true)
-        console.log('🔍 A buscar dados da secção Sobre Nós do Supabase...')
-
-        // Buscar texto principal
-        const { data: aboutData, error: aboutError } = await supabase
-          .from('about_section')
-          .select('*')
-          .limit(1)
-          .single()
-
-        // Buscar features (cards)
-        const { data: featuresData, error: featuresError } = await supabase
-          .from('about_features')
-          .select('*')
-          .order('order', { ascending: true, nullsFirst: false })
-          .order('created_at', { ascending: true })
-
-        if (aboutError && !aboutError.message.includes('does not exist') && !aboutError.message.includes('relation')) {
-          console.error('❌ Erro ao buscar texto principal:', aboutError)
-        }
-
-        if (featuresError && !featuresError.message.includes('does not exist') && !featuresError.message.includes('relation')) {
-          console.error('❌ Erro ao buscar features:', featuresError)
-        }
-
-        // Se as tabelas não existirem, usar dados padrão
-        if (aboutError && (aboutError.message.includes('does not exist') || aboutError.message.includes('relation'))) {
-          console.warn('⚠️ Tabela "about_section" não existe ainda. Usando texto padrão.')
-          setMainText('A Clínica Freud é uma clínica especializada em saúde mental, dedicada a proporcionar cuidados de excelência através de uma equipa multidisciplinar de psicólogos e psiquiatras experientes.')
-        } else if (aboutData) {
-          setMainText(aboutData.main_text || '')
-        }
-
-        if (featuresError && (featuresError.message.includes('does not exist') || featuresError.message.includes('relation'))) {
-          console.warn('⚠️ Tabela "about_features" não existe ainda. Usando features padrão.')
-          setFeatures([
-            { id: '1', title: 'Equipa Experiente', description: 'Profissionais altamente qualificados e certificados', icon_name: 'Users', order: 1 },
-            { id: '2', title: 'Cuidado Personalizado', description: 'Acompanhamento individualizado para cada paciente', icon_name: 'Heart', order: 2 },
-            { id: '3', title: 'Confidencialidade', description: 'Total privacidade e sigilo profissional', icon_name: 'Shield', order: 3 },
-          ])
-        } else if (featuresData && featuresData.length > 0) {
-          setFeatures(featuresData)
-        } else {
-          // Fallback para dados padrão se não houver dados
-          setFeatures([
-            { id: '1', title: 'Equipa Experiente', description: 'Profissionais altamente qualificados e certificados', icon_name: 'Users', order: 1 },
-            { id: '2', title: 'Cuidado Personalizado', description: 'Acompanhamento individualizado para cada paciente', icon_name: 'Heart', order: 2 },
-            { id: '3', title: 'Confidencialidade', description: 'Total privacidade e sigilo profissional', icon_name: 'Shield', order: 3 },
-          ])
-        }
-      } catch (err) {
-        console.error('❌ Erro ao buscar dados da secção Sobre Nós:', err)
-        // Usar dados padrão em caso de erro
-        setMainText('A Clínica Freud é uma clínica especializada em saúde mental, dedicada a proporcionar cuidados de excelência através de uma equipa multidisciplinar de psicólogos e psiquiatras experientes.')
-        setFeatures([
-          { id: '1', title: 'Equipa Experiente', description: 'Profissionais altamente qualificados e certificados', icon_name: 'Users', order: 1 },
-          { id: '2', title: 'Cuidado Personalizado', description: 'Acompanhamento individualizado para cada paciente', icon_name: 'Heart', order: 2 },
-          { id: '3', title: 'Confidencialidade', description: 'Total privacidade e sigilo profissional', icon_name: 'Shield', order: 3 },
-        ])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAboutData()
-  }, [])
-
-  // Função para renderizar o ícone ou imagem
-  const renderIcon = (feature: AboutFeature) => {
-    if (feature.icon_url) {
-      // Imagem carregada - formato distinto: maior, circular com borda
-      return (
-        <div className="mb-6 flex justify-center">
-          <div className="relative">
-            <img
-              src={feature.icon_url}
-              alt={feature.title}
-              className="w-24 h-24 rounded-full object-cover border-4 border-clinica-primary shadow-lg"
-            />
-            <div className="absolute inset-0 rounded-full border-2 border-clinica-menu opacity-20"></div>
-          </div>
-        </div>
-      )
-    }
-
-    if (feature.icon_name && iconMap[feature.icon_name]) {
-      const IconComponent = iconMap[feature.icon_name]
-      return (
-        <div className="mb-6 flex justify-center">
-          <div className="w-24 h-24 rounded-full bg-clinica-primary/10 flex items-center justify-center border-2 border-clinica-primary">
-            <IconComponent className="w-12 h-12 text-clinica-primary" />
-          </div>
-        </div>
-      )
-    }
-
-    // Fallback: ícone padrão
-    return (
-      <div className="mb-6 flex justify-center">
-        <div className="w-24 h-24 rounded-full bg-clinica-primary/10 flex items-center justify-center border-2 border-clinica-primary">
-          <HelpCircle className="w-12 h-12 text-clinica-primary" />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <section id="sobre" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Sobre Nós</h2>
-          {loading ? (
-            <p className="text-lg text-clinica-text max-w-3xl mx-auto font-medium">
-              A carregar...
-            </p>
-          ) : (
-            <p className="text-lg text-clinica-text max-w-3xl mx-auto font-medium">
-              {mainText || 'A Clínica Freud é uma clínica especializada em saúde mental, dedicada a proporcionar cuidados de excelência através de uma equipa multidisciplinar de psicólogos e psiquiatras experientes.'}
-            </p>
-          )}
-        </motion.div>
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-clinica-text opacity-70">A carregar...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-clinica-bg border border-clinica-primary rounded-xl p-8 text-center shadow-lg hover:shadow-xl transition-shadow"
-              >
-                {renderIcon(feature)}
-                <h3 className="text-xl font-bold mb-3 text-clinica-text">{feature.title}</h3>
-                <p className="text-clinica-text opacity-90 leading-relaxed">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-// Página principal com todas as secções
-export default function Home() {
-  const [menuAberto, setMenuAberto] = useState(false)
-  const [idiomaAberto, setIdiomaAberto] = useState(false)
-  const [idioma, setIdioma] = useState<'pt' | 'en'>('pt') // Por agora só português
-  const [services, setServices] = useState<Array<{ title: string; desc: string; image: string }>>([])
-
-  // Secções disponíveis para o menu "O que oferecemos?"
-  const seccoes = [
-    { id: 'sobre', nome: 'Sobre Nós' },
-    { id: 'servicos', nome: 'Serviços' },
-    { id: 'corpo-clinico', nome: 'Corpo Clínico' },
-    { id: 'depoimentos', nome: 'Depoimentos' },
-    { id: 'blog', nome: 'Blog' },
-    { id: 'seguradoras', nome: 'Seguradoras' },
-    { id: 'faq', nome: 'FAQ' },
-    { id: 'compromisso-etico', nome: 'Compromisso Ético' },
-    { id: 'contactos', nome: 'Contactos' },
-  ]
-
-  const scrollParaSecao = (id: string) => {
-    const elemento = document.getElementById(id)
-    if (elemento) {
-      elemento.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      setMenuAberto(false)
-    }
-  }
-
-  // Buscar serviços da base de dados
-  useEffect(() => {
-    async function fetchServices() {
-      try {
-        const { data, error } = await supabase
-          .from('services')
-          .select('id, title, description, image_url, order')
-          .order('order', { ascending: true, nullsFirst: true })
-          .order('title', { ascending: true })
-
-        if (error) {
-          // Se a tabela não existir, usar serviços padrão
-          if (error.message.includes('does not exist') || error.message.includes('relation')) {
-            console.warn('⚠️ Tabela "services" não existe ainda. Usando serviços padrão.')
-            setServices([
-              { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
-              { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
-              { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
-              { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
-              { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
-              { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
-            ])
-            return
-          }
-          console.error('Erro ao buscar serviços:', error)
-          throw error
-        }
-
-        if (data && data.length > 0) {
-          const formattedServices = data.map((s: any) => ({
-            title: s.title || '',
-            desc: s.description || '',
-            image: s.image_url || '',
-          }))
-          setServices(formattedServices)
-        } else {
-          // Se não houver serviços, usar padrão
-          setServices([
-            { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
-            { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
-            { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
-            { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
-            { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
-            { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
-          ])
-        }
-      } catch (error) {
-        console.error('Erro ao buscar serviços:', error)
-        // Usar serviços padrão em caso de erro
-        setServices([
-          { title: 'Psicoterapia Individual', desc: 'Sessões individuais personalizadas', image: '' },
-          { title: 'Psiquiatria', desc: 'Avaliação e tratamento psiquiátrico', image: '' },
-          { title: 'Terapia de Casal', desc: 'Apoio especializado para casais', image: '' },
-          { title: 'Terapia Familiar', desc: 'Intervenção com toda a família', image: '' },
-          { title: 'Avaliação Psicológica', desc: 'Testes e avaliações completas', image: '' },
-          { title: 'Grupos Terapêuticos', desc: 'Sessões em grupo para apoio mútuo', image: '' },
-        ])
-      }
-    }
-
-    fetchServices()
-  }, [])
-
-  // Fechar dropdowns ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      if (!target.closest('.menu-dropdown') && !target.closest('.idioma-dropdown')) {
-        setMenuAberto(false)
-        setIdiomaAberto(false)
-      }
-    }
-
-    if (menuAberto || idiomaAberto) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [menuAberto, idiomaAberto])
-
-  return (
-    <div className="min-h-screen bg-clinica-bg text-clinica-text">
-      {/* 1. HOME - Hero Section Estilo Robinhood */}
-      <section id="home" className="relative min-h-screen flex flex-col bg-clinica-bg overflow-hidden">
-        {/* Vídeo de Fundo do YouTube - Esbatido e Wide Screen */}
-        <div className="absolute inset-0 w-full h-full z-0">
-          <iframe
-            className="absolute inset-0 w-full h-full"
-            src="https://www.youtube.com/embed/3-3bGeqCqs8?autoplay=1&loop=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playlist=3-3bGeqCqs8&modestbranding=1"
-            title="Background Video"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-            style={{
-              opacity: 0.5, // Esbatido (50% de opacidade - aumentado para mais visibilidade)
-              filter: 'brightness(0.85) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
-              pointerEvents: 'none', // Não interferir com cliques
-            }}
-          />
-          {/* Overlay escuro adicional para garantir legibilidade do texto */}
-          <div className="absolute inset-0 bg-clinica-bg/30"></div>
-        </div>
-
-        {/* Header Fixo - Logo à esquerda, Menus no meio, Botão à direita */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-clinica-bg/95 backdrop-blur-sm border-b border-clinica-accent/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              {/* Logo Clínica Freud */}
-              <motion.a
-                href="#home"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-                onClick={() => scrollParaSecao('home')}
-              >
-                {/* Logo placeholder - substituir pela imagem quando disponível */}
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16">
-                  <div className="absolute inset-0 rounded-full bg-clinica-primary opacity-20 blur-xl"></div>
-                  <div className="relative w-full h-full rounded-full bg-gradient-to-br from-clinica-primary to-clinica-menu flex items-center justify-center shadow-lg">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-clinica-bg/20 backdrop-blur-sm flex items-center justify-center">
-                      <span className="text-clinica-bg font-bold text-lg sm:text-xl">CF</span>
-                    </div>
-                  </div>
-                </div>
-                <span className="text-xl sm:text-2xl font-bold text-clinica-primary hidden sm:block">
-                  Clínica <span className="text-clinica-menu">Freud</span>
-                </span>
-              </motion.a>
-
-              {/* Menu Desktop - Centro */}
-              <nav className="hidden md:flex items-center gap-6">
-                {/* Menu "O que oferecemos?" */}
-                <div className="relative menu-dropdown">
-                  <button
-                    onClick={() => {
-                      setMenuAberto(!menuAberto)
-                      setIdiomaAberto(false)
-                    }}
-                    className="flex items-center gap-1 text-clinica-text hover:text-clinica-primary transition-colors font-medium"
-                  >
-                    O que oferecemos?
-                    <ChevronDown className={`w-4 h-4 transition-transform ${menuAberto ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {/* Dropdown Menu */}
-                  {menuAberto && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full left-0 mt-2 w-56 bg-clinica-bg border border-clinica-primary rounded-lg shadow-xl py-2 z-50"
-                    >
-                      {seccoes.map((seccao) => (
-                        <button
-                          key={seccao.id}
-                          onClick={() => scrollParaSecao(seccao.id)}
-                          className="w-full text-left px-4 py-2 text-clinica-text hover:bg-clinica-accent hover:text-clinica-primary transition-colors"
-                        >
-                          {seccao.nome}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Seletor de Idioma */}
-                <div className="relative idioma-dropdown">
-                  <button
-                    onClick={() => {
-                      setIdiomaAberto(!idiomaAberto)
-                      setMenuAberto(false)
-                    }}
-                    className="flex items-center gap-1 text-clinica-text hover:text-clinica-primary transition-colors font-medium"
-                  >
-                    <Globe className="w-4 h-4" />
-                    <span>{idioma === 'pt' ? 'PT' : 'EN'}</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${idiomaAberto ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {/* Dropdown Idioma */}
-                  {idiomaAberto && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full right-0 mt-2 w-32 bg-clinica-bg border border-clinica-primary rounded-lg shadow-xl py-2 z-50"
-                    >
-                      <button
-                        onClick={() => {
-                          setIdioma('pt')
-                          setIdiomaAberto(false)
-                        }}
-                        className={`w-full text-left px-4 py-2 transition-colors ${
-                          idioma === 'pt' 
-                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
-                            : 'text-clinica-text hover:bg-clinica-accent'
-                        }`}
-                      >
-                        Português
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIdioma('en')
-                          setIdiomaAberto(false)
-                          // Por agora só mostra alerta - tradução será implementada depois
-                          alert('Tradução para inglês será implementada em breve.')
-                        }}
-                        className={`w-full text-left px-4 py-2 transition-colors ${
-                          idioma === 'en' 
-                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
-                            : 'text-clinica-text hover:bg-clinica-accent'
-                        }`}
-                      >
-                        English
-                      </button>
-                    </motion.div>
-                  )}
-                </div>
-              </nav>
-
-              {/* Menu Mobile - Hamburger */}
-              <div className="md:hidden flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setMenuAberto(!menuAberto)
-                    setIdiomaAberto(false)
-                  }}
-                  className="text-clinica-text hover:text-clinica-primary transition-colors"
-                  aria-label="Menu"
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Botão Ligue-nos - sempre visível */}
-              <motion.a
-                href="tel:+351916649284"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="flex items-center gap-2 bg-clinica-cta text-clinica-text px-3 py-2 sm:px-6 sm:py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-opacity-90 transition-all shadow-lg hover:shadow-xl hover:scale-105"
-              >
-                <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Ligue-nos</span>
-              </motion.a>
+              ))}
             </div>
 
-            {/* Menu Mobile Expandido */}
-            {menuAberto && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="md:hidden mt-4 pb-4 border-t border-clinica-accent/20 pt-4"
-              >
-                {/* Menu "O que oferecemos?" Mobile */}
-                <div className="mb-4">
-                  <button
-                    onClick={() => setMenuAberto(!menuAberto)}
-                    className="flex items-center gap-2 text-clinica-text font-semibold mb-2"
-                  >
-                    O que oferecemos?
-                  </button>
-                  <div className="pl-4 space-y-1">
-                    {seccoes.map((seccao) => (
-                      <button
-                        key={seccao.id}
-                        onClick={() => scrollParaSecao(seccao.id)}
-                        className="block w-full text-left px-3 py-2 text-sm text-clinica-text hover:bg-clinica-accent hover:text-clinica-primary rounded transition-colors"
-                      >
-                        {seccao.nome}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Seletor de Idioma Mobile */}
-                <div>
-                  <button
-                    onClick={() => setIdiomaAberto(!idiomaAberto)}
-                    className="flex items-center gap-2 text-clinica-text font-semibold mb-2"
-                  >
-                    <Globe className="w-4 h-4" />
-                    Idioma: {idioma === 'pt' ? 'Português' : 'English'}
-                    <ChevronDown className={`w-4 h-4 transition-transform ${idiomaAberto ? 'rotate-180' : ''}`} />
-                  </button>
-                  {idiomaAberto && (
-                    <div className="pl-4 space-y-1">
-                      <button
-                        onClick={() => {
-                          setIdioma('pt')
-                          setIdiomaAberto(false)
-                        }}
-                        className={`block w-full text-left px-3 py-2 text-sm rounded transition-colors ${
-                          idioma === 'pt' 
-                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
-                            : 'text-clinica-text hover:bg-clinica-accent'
-                        }`}
-                      >
-                        Português
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIdioma('en')
-                          setIdiomaAberto(false)
-                          alert('Tradução para inglês será implementada em breve.')
-                        }}
-                        className={`block w-full text-left px-3 py-2 text-sm rounded transition-colors ${
-                          idioma === 'en' 
-                            ? 'bg-clinica-accent text-clinica-primary font-semibold' 
-                            : 'text-clinica-text hover:bg-clinica-accent'
-                        }`}
-                      >
-                        English
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </div>
-        </header>
-
-        {/* Conteúdo Principal - Centralizado */}
-        <div className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-32 md:pt-24 pb-16">
-          <div className="max-w-5xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="space-y-8"
-            >
-              {/* Mensagem Principal - Grande e Impactante */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-clinica-text leading-tight">
-                Tratamento de{' '}
-                <span className="text-clinica-primary">Burnout</span>,{' '}
-                <span className="text-clinica-primary">Ansiedade</span>,{' '}
-                <span className="text-clinica-primary">Bullying</span> e Problemas Relacionais em{' '}
-                <span className="text-clinica-menu">Lisboa</span> e{' '}
-                <span className="text-clinica-menu">Online</span>
-              </h1>
-
-              {/* Botão Agendar Consulta - Estilo Robinhood */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                className="pt-8"
-              >
-                <button className="bg-clinica-primary text-clinica-bg px-10 py-5 rounded-full font-bold text-lg sm:text-xl hover:bg-opacity-90 transition-all shadow-2xl hover:shadow-3xl hover:scale-105 active:scale-95">
-                  Agendar Consulta
-                </button>
-              </motion.div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. SOBRE/NÓS */}
-      <SobreNosSection />
-
-      {/* 3. SERVIÇOS */}
-      <section id="servicos" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Serviços</h2>
-            <p className="text-lg text-clinica-text">Oferecemos uma gama completa de serviços de saúde mental</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.length > 0 ? services.map((servico, index) => (
-              <motion.div
-                key={`servico-${index}-${servico.title}`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-clinica-bg border border-clinica-primary rounded-xl overflow-hidden hover:border-clinica-menu transition-all shadow-md hover:shadow-lg group"
-              >
-                {/* Imagem separada - parte superior */}
-                {servico.image && (
-                  <div 
-                    className="w-full h-32 bg-clinica-accent"
-                    style={{
-                      backgroundImage: `url(${servico.image})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                    }}
-                  />
-                )}
-                
-                {/* Texto com fundo sólido - parte inferior */}
-                <div className="p-6 bg-clinica-bg">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Stethoscope className="w-8 h-8 text-clinica-primary flex-shrink-0" />
-                    <h3 className="text-xl font-bold text-clinica-text">
-                      {servico.title}
-                    </h3>
-                  </div>
-                  <p className="text-clinica-text opacity-90 leading-relaxed">
-                    {servico.desc}
-                  </p>
-                </div>
-              </motion.div>
-            )) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-clinica-text">A carregar serviços...</p>
+            {services.length === 0 && !isCreatingService && (
+              <div className="text-center py-12">
+                <p className="text-gray-400 mb-4">Nenhum serviço cadastrado ainda.</p>
+                <p className="text-gray-500 text-sm mb-4">
+                  Clique em "Adicionar Serviço" para começar.
+                </p>
+                <p className="text-gray-500 text-xs">
+                  💡 Nota: A tabela "services" será criada automaticamente no Supabase quando adicionar o primeiro serviço.
+                </p>
               </div>
             )}
-          </div>
-        </div>
-      </section>
+          </>
+        )}
 
-      {/* 4. CORPO CLÍNICO */}
-      <CorpoClinicoSection />
+        {/* SECÇÃO DEPOIMENTOS */}
+        {activeTab === 'depoimentos' && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">
+                Gestão de <span className="text-robinhood-green">Depoimentos</span>
+              </h1>
+              {!isCreatingTestimonial && (
+                <button
+                  onClick={() => setIsCreatingTestimonial(true)}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Adicionar Depoimento
+                </button>
+              )}
+            </div>
 
-      {/* 5. DEPOIMENTOS */}
-      <DepoimentosSection />
+            {isLoadingTestimonials ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar depoimentos...</p>
+              </div>
+            ) : (
+              <>
+                {/* Formulário de Criação */}
+                {isCreatingTestimonial && (
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+                    <h2 className="text-2xl font-bold text-white mb-4">Novo Depoimento</h2>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Nome do Paciente
+                        </label>
+                        <input
+                          type="text"
+                          value={testimonialFormData.name || ''}
+                          onChange={(e) =>
+                            setTestimonialFormData({ ...testimonialFormData, name: e.target.value })
+                          }
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                          placeholder="Ex: Maria S."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Depoimento
+                        </label>
+                        <textarea
+                          value={testimonialFormData.text || ''}
+                          onChange={(e) =>
+                            setTestimonialFormData({ ...testimonialFormData, text: e.target.value })
+                          }
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green min-h-[100px]"
+                          placeholder="Ex: Excelente atendimento e profissionais muito competentes."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Avaliação (Estrelas: 1-5)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={testimonialFormData.rating || 5}
+                          onChange={(e) =>
+                            setTestimonialFormData({ ...testimonialFormData, rating: parseInt(e.target.value) || 5 })
+                          }
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCreateTestimonial}
+                          className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          <Save className="w-5 h-5" />
+                          Guardar
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsCreatingTestimonial(false)
+                            setTestimonialFormData({ name: '', text: '', rating: 5 })
+                          }}
+                          className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-      {/* 6. BLOG */}
-      <section id="blog" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Blog</h2>
-            <p className="text-lg text-clinica-text">Artigos e recursos sobre saúde mental</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((item) => (
-              <motion.div
-                key={item}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: item * 0.1 }}
-                className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors cursor-pointer shadow-md hover:shadow-lg"
-              >
-                <BookOpen className="w-10 h-10 text-clinica-primary mb-4" />
-                <h3 className="text-xl font-bold mb-2 text-clinica-text">Artigo de Blog {item}</h3>
-                <p className="text-clinica-text mb-4">Descrição do artigo sobre saúde mental e bem-estar...</p>
-                <button className="text-clinica-menu hover:underline">Ler mais →</button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+                {/* Lista de Depoimentos */}
+                {testimonials.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400">Nenhum depoimento encontrado. Adicione o primeiro!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {testimonials.map((testimonial, index) => (
+                      <div
+                        key={testimonial.id}
+                        className="bg-gray-800 border border-gray-700 rounded-lg p-6"
+                      >
+                        {editingTestimonialId === testimonial.id ? (
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Nome do Paciente
+                              </label>
+                              <input
+                                type="text"
+                                value={testimonialFormData.name || ''}
+                                onChange={(e) =>
+                                  setTestimonialFormData({ ...testimonialFormData, name: e.target.value })
+                                }
+                                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Depoimento
+                              </label>
+                              <textarea
+                                value={testimonialFormData.text || ''}
+                                onChange={(e) =>
+                                  setTestimonialFormData({ ...testimonialFormData, text: e.target.value })
+                                }
+                                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green min-h-[100px]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Avaliação (Estrelas: 1-5)
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="5"
+                                value={testimonialFormData.rating || 5}
+                                onChange={(e) =>
+                                  setTestimonialFormData({ ...testimonialFormData, rating: parseInt(e.target.value) || 5 })
+                                }
+                                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-robinhood-green"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleUpdateTestimonial(testimonial.id)}
+                                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <Save className="w-5 h-5" />
+                                Guardar
+                              </button>
+                              <button
+                                onClick={cancelEditTestimonial}
+                                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <X className="w-5 h-5" />
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => moveTestimonial(testimonial.id, 'up')}
+                                    disabled={index === 0 || movingTestimonial === testimonial.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowUp className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveTestimonial(testimonial.id, 'down')}
+                                    disabled={index === testimonials.length - 1 || movingTestimonial === testimonial.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowDown className="w-5 h-5" />
+                                  </button>
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="text-xl font-bold text-white mb-2">{testimonial.name}</h3>
+                                  <div className="flex gap-1 mb-2">
+                                    {[...Array(testimonial.rating)].map((_, i) => (
+                                      <Star key={i} className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                                    ))}
+                                  </div>
+                                  <p className="text-gray-300 italic">"{testimonial.text}"</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => startEditTestimonial(testimonial)}
+                                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <Edit className="w-5 h-5" />
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTestimonial(testimonial.id)}
+                                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                                Excluir
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
 
-      {/* 7. SEGURADORAS */}
-      <SeguradorasSection />
+        {/* SECÇÃO SOBRE NÓS - Design Distinto (Layout em Duas Colunas) */}
+        {activeTab === 'sobre-nos' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Gestão de <span className="text-robinhood-green">Sobre Nós</span>
+              </h1>
+              <p className="text-gray-400 text-sm">Gerir o texto principal e os cards de características</p>
+            </div>
 
-      {/* 8. FAQ */}
-      <FAQSection />
+            {isLoadingAbout || isLoadingFeatures ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* COLUNA ESQUERDA - Texto Principal */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-robinhood-green" />
+                    Texto Principal
+                  </h2>
+                  <textarea
+                    value={aboutSection?.main_text || ''}
+                    onChange={(e) => {
+                      if (aboutSection) {
+                        setAboutSection({ ...aboutSection, main_text: e.target.value })
+                      } else {
+                        setAboutSection({ id: '', main_text: e.target.value })
+                      }
+                    }}
+                    className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green min-h-[150px] mb-4"
+                    placeholder="Texto principal da secção Sobre Nós..."
+                  />
+                  <button
+                    onClick={() => updateAboutSection(aboutSection?.main_text || '')}
+                    className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    <Save className="w-5 h-5" />
+                    Guardar Texto Principal
+                  </button>
+                </div>
 
-      {/* 9. COMPROMISSO ÉTICO */}
-      <section id="compromisso-etico" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Compromisso Ético</h2>
-            <p className="text-lg text-clinica-text">Os nossos valores e princípios</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="bg-clinica-bg border border-clinica-primary rounded-xl p-8 shadow-md"
-            >
-              <FileCheck className="w-12 h-12 text-clinica-primary mb-4" />
-              <h3 className="text-2xl font-bold mb-4 text-clinica-text">Código de Ética</h3>
-              <p className="text-clinica-text leading-relaxed">
-                Seguimos rigorosamente o código de ética profissional, garantindo o mais alto padrão de cuidados e respeito pelos nossos pacientes.
-              </p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="bg-clinica-bg border border-clinica-primary rounded-xl p-8 shadow-md"
-            >
-              <Shield className="w-12 h-12 text-clinica-primary mb-4" />
-              <h3 className="text-2xl font-bold mb-4 text-clinica-text">Confidencialidade</h3>
-              <p className="text-clinica-text leading-relaxed">
-                Todos os dados e informações dos pacientes são tratados com absoluta confidencialidade, em conformidade com a legislação em vigor.
-              </p>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+                {/* COLUNA DIREITA - Features (Cards) */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                      <Star className="w-6 h-6 text-robinhood-green" />
+                      Características
+                    </h2>
+                    {!isCreatingFeature && (
+                      <button
+                        onClick={() => setIsCreatingFeature(true)}
+                        className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg font-semibold transition-colors text-sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar
+                      </button>
+                    )}
+                  </div>
 
-      {/* 10. CONTACTOS */}
-      <section id="contactos" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Contactos</h2>
-            <p className="text-lg text-clinica-text">Entre em contacto connosco</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-            >
-              <Phone className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Telefone</h3>
-              <p className="text-clinica-text font-medium">+351 916 649 284</p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-            >
-              <Mail className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Email</h3>
-              <p className="text-clinica-text font-medium">consulta@clinicafreud.pt</p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-            >
-              <MapPin className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Morada</h3>
-              <p className="text-clinica-text font-medium">Avenida 5 de Outubro, 122, 8º Esq., 1050-061 Lisboa</p>
-            </motion.div>
-          </div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-8 bg-clinica-accent border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-          >
-            <Clock className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2 text-clinica-text">Horário de Funcionamento</h3>
-            <p className="text-clinica-text font-medium">Segunda a Sexta: 9h - 19h</p>
-            <p className="text-clinica-text font-medium">Sábado: 9h - 13h</p>
-          </motion.div>
-        </div>
-      </section>
+                  {/* Formulário de Criação */}
+                  {isCreatingFeature && (
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-4">
+                      <h3 className="text-lg font-bold text-white mb-3">Nova Característica</h3>
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          placeholder="Título"
+                          value={featureFormData.title || ''}
+                          onChange={(e) => setFeatureFormData({ ...featureFormData, title: e.target.value })}
+                          className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                        />
+                        <textarea
+                          placeholder="Descrição"
+                          value={featureFormData.description || ''}
+                          onChange={(e) => setFeatureFormData({ ...featureFormData, description: e.target.value })}
+                          className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green min-h-[80px] text-sm"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Nome do Ícone (ex: Users)"
+                            value={featureFormData.icon_name || ''}
+                            onChange={(e) => setFeatureFormData({ ...featureFormData, icon_name: e.target.value })}
+                            className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="OU URL da Imagem"
+                            value={featureFormData.icon_url || ''}
+                            onChange={(e) => setFeatureFormData({ ...featureFormData, icon_url: e.target.value })}
+                            className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleCreateFeature}
+                            className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                          >
+                            <Save className="w-4 h-4" />
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsCreatingFeature(false)
+                              setFeatureFormData({ title: '', description: '', icon_name: '', icon_url: '' })
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                          >
+                            <X className="w-4 h-4" />
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-      {/* 11. DIREITOS E AFINS */}
-      <section id="direitos" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Direitos e Afins</h2>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 shadow-md"
-            >
-              <h3 className="text-2xl font-bold mb-4 text-clinica-text">Direitos do Paciente</h3>
-              <ul className="space-y-2 text-clinica-text">
-                <li>• Direito à informação</li>
-                <li>• Direito à confidencialidade</li>
-                <li>• Direito ao consentimento informado</li>
-                <li>• Direito à qualidade dos cuidados</li>
-              </ul>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="bg-clinica-bg border border-clinica-primary rounded-xl p-6 shadow-md"
-            >
-              <h3 className="text-2xl font-bold mb-4 text-clinica-text">Política de Privacidade</h3>
-              <p className="text-clinica-text leading-relaxed mb-4">
-                Respeitamos a sua privacidade e protegemos os seus dados pessoais de acordo com o RGPD.
-              </p>
-              <button className="text-clinica-menu hover:underline font-semibold">Ler política completa →</button>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+                  {/* Lista de Features */}
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                    {aboutFeatures.length === 0 ? (
+                      <p className="text-gray-400 text-sm text-center py-4">Nenhuma característica adicionada ainda.</p>
+                    ) : (
+                      aboutFeatures.map((feature, index) => (
+                        <div
+                          key={feature.id}
+                          className="bg-gray-700 border border-gray-600 rounded-lg p-4"
+                        >
+                          {editingFeatureId === feature.id ? (
+                            <div className="space-y-3">
+                              <input
+                                type="text"
+                                value={featureFormData.title || ''}
+                                onChange={(e) => setFeatureFormData({ ...featureFormData, title: e.target.value })}
+                                className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                              />
+                              <textarea
+                                value={featureFormData.description || ''}
+                                onChange={(e) => setFeatureFormData({ ...featureFormData, description: e.target.value })}
+                                className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green min-h-[60px] text-sm"
+                              />
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Nome do Ícone"
+                                    value={featureFormData.icon_name || ''}
+                                    onChange={(e) => setFeatureFormData({ ...featureFormData, icon_name: e.target.value })}
+                                    className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="OU URL da Imagem"
+                                    value={featureFormData.icon_url || ''}
+                                    onChange={(e) => setFeatureFormData({ ...featureFormData, icon_url: e.target.value })}
+                                    className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <label className="cursor-pointer flex-1">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0]
+                                        if (file) handleFeatureImageUpload(feature.id, file)
+                                      }}
+                                      disabled={uploadingFeatureImage === feature.id}
+                                    />
+                                    <span className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
+                                      {uploadingFeatureImage === feature.id ? (
+                                        'A fazer upload...'
+                                      ) : (
+                                        <>
+                                          <Upload className="w-4 h-4" />
+                                          Fazer Upload de Imagem
+                                        </>
+                                      )}
+                                    </span>
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleUpdateFeature(feature.id)}
+                                  className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <Save className="w-4 h-4" />
+                                  Guardar
+                                </button>
+                                <button
+                                  onClick={cancelEditFeature}
+                                  className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <X className="w-4 h-4" />
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <div className="flex flex-col gap-1">
+                                    <button
+                                      onClick={() => moveFeature(feature.id, 'up')}
+                                      disabled={index === 0 || movingFeature === feature.id}
+                                      className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                      <ArrowUp className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => moveFeature(feature.id, 'down')}
+                                      disabled={index === aboutFeatures.length - 1 || movingFeature === feature.id}
+                                      className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                      <ArrowDown className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="text-white font-semibold mb-1">{feature.title}</h3>
+                                    <p className="text-gray-300 text-sm">{feature.description}</p>
+                                    {feature.icon_url && (
+                                      <div className="mt-2 mb-2">
+                                        <img
+                                          src={feature.icon_url}
+                                          alt={feature.title}
+                                          className="w-20 h-20 object-cover rounded-lg border border-gray-600"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement
+                                            target.style.display = 'none'
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                                      {feature.icon_name && (
+                                        <span className="bg-gray-600 px-2 py-1 rounded">Ícone: {feature.icon_name}</span>
+                                      )}
+                                      {feature.icon_url && (
+                                        <span className="bg-purple-600 px-2 py-1 rounded">Imagem Carregada</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 mt-3">
+                                <button
+                                  onClick={() => startEditFeature(feature)}
+                                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteFeature(feature.id)}
+                                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Excluir
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
-      {/* Footer */}
-      <footer className="bg-clinica-primary border-t border-clinica-menu py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-clinica-bg">© {new Date().getFullYear()} Clínica Freud. Todos os direitos reservados.</p>
-        </div>
-      </footer>
+        {/* SECÇÃO FAQs */}
+        {activeTab === 'faqs' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Gestão de <span className="text-robinhood-green">FAQs</span>
+              </h1>
+              <p className="text-gray-400 text-sm">Gerir perguntas frequentes e respostas</p>
+            </div>
+
+            {isLoadingFAQs ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar FAQs...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Botão Adicionar FAQ */}
+                {!isCreatingFAQ && (
+                  <button
+                    onClick={() => setIsCreatingFAQ(true)}
+                    className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Adicionar FAQ
+                  </button>
+                )}
+
+                {/* Formulário de Criação */}
+                {isCreatingFAQ && (
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                    <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                      <HelpCircle className="w-6 h-6 text-robinhood-green" />
+                      Novo FAQ
+                    </h2>
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        placeholder="Pergunta"
+                        value={faqFormData.question || ''}
+                        onChange={(e) => setFaqFormData({ ...faqFormData, question: e.target.value })}
+                        className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                      />
+                      <textarea
+                        placeholder="Resposta"
+                        value={faqFormData.answer || ''}
+                        onChange={(e) => setFaqFormData({ ...faqFormData, answer: e.target.value })}
+                        className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green min-h-[120px]"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCreateFAQ}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <Save className="w-5 h-5" />
+                          Guardar FAQ
+                        </button>
+                        <button
+                          onClick={cancelEditFAQ}
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de FAQs */}
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {faqs.length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-4">Nenhum FAQ adicionado ainda.</p>
+                  ) : (
+                    faqs.map((faq, index) => (
+                      <div
+                        key={faq.id}
+                        className="bg-gray-800 border border-gray-700 rounded-lg p-4"
+                      >
+                        {editingFAQId === faq.id ? (
+                          <div className="space-y-3">
+                            <input
+                              type="text"
+                              value={faqFormData.question || ''}
+                              onChange={(e) => setFaqFormData({ ...faqFormData, question: e.target.value })}
+                              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                            />
+                            <textarea
+                              value={faqFormData.answer || ''}
+                              onChange={(e) => setFaqFormData({ ...faqFormData, answer: e.target.value })}
+                              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green min-h-[100px] text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleUpdateFAQ(faq.id)}
+                                className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <Save className="w-4 h-4" />
+                                Guardar
+                              </button>
+                              <button
+                                onClick={cancelEditFAQ}
+                                className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <X className="w-4 h-4" />
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2 flex-1">
+                                <div className="flex flex-col gap-1">
+                                  <button
+                                    onClick={() => moveFAQ(faq.id, 'up')}
+                                    disabled={index === 0 || movingFAQ === faq.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowUp className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveFAQ(faq.id, 'down')}
+                                    disabled={index === faqs.length - 1 || movingFAQ === faq.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowDown className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-robinhood-green/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                      <HelpCircle className="w-4 h-4 text-robinhood-green" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-white font-semibold mb-1">{faq.question}</h3>
+                                      <p className="text-gray-300 text-sm line-clamp-2">{faq.answer}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={() => startEditFAQ(faq)}
+                                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFAQ(faq.id)}
+                                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Excluir
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* SECÇÃO SEGURADORAS */}
+        {activeTab === 'seguradoras' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Gestão de <span className="text-robinhood-green">Seguradoras</span>
+              </h1>
+              <p className="text-gray-400 text-sm">Gerir seguradoras organizadas em 3 caixas (máximo 4 por caixa)</p>
+            </div>
+
+            {isLoadingInsurers ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar seguradoras...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Botão Adicionar Seguradora */}
+                {!isCreatingInsurer && (
+                  <button
+                    onClick={() => setIsCreatingInsurer(true)}
+                    className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Adicionar Seguradora
+                  </button>
+                )}
+
+                {/* Formulário de Criação */}
+                {isCreatingInsurer && (
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                    <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                      <Building2 className="w-6 h-6 text-robinhood-green" />
+                      Nova Seguradora
+                    </h2>
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        placeholder="Nome da Seguradora (ex: Medicare)"
+                        value={insurerFormData.name || ''}
+                        onChange={(e) => setInsurerFormData({ ...insurerFormData, name: e.target.value })}
+                        className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                      />
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">
+                          Caixa (1, 2 ou 3)
+                        </label>
+                        <select
+                          value={insurerFormData.box_number || 1}
+                          onChange={(e) => setInsurerFormData({ ...insurerFormData, box_number: parseInt(e.target.value) })}
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                        >
+                          <option value={1}>Caixa 1</option>
+                          <option value={2}>Caixa 2</option>
+                          <option value={3}>Caixa 3</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">
+                          URL do Logótipo (imagem redonda)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://exemplo.com/logo.jpg"
+                          value={insurerFormData.logo_url || ''}
+                          onChange={(e) => setInsurerFormData({ ...insurerFormData, logo_url: e.target.value })}
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCreateInsurer}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <Save className="w-5 h-5" />
+                          Guardar Seguradora
+                        </button>
+                        <button
+                          onClick={cancelEditInsurer}
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de Seguradoras agrupadas por caixa */}
+                <div className="space-y-6">
+                  {[1, 2, 3].map((boxNum) => {
+                    const boxInsurers = insurers
+                      .filter(i => i.box_number === boxNum)
+                      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                    
+                    return (
+                      <div key={boxNum} className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                          <Building2 className="w-5 h-5 text-robinhood-green" />
+                          Caixa {boxNum} ({boxInsurers.length}/4)
+                        </h3>
+                        {boxInsurers.length === 0 ? (
+                          <p className="text-gray-400 text-sm text-center py-4">Nenhuma seguradora nesta caixa.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {boxInsurers.map((insurer, index) => (
+                              <div
+                                key={insurer.id}
+                                className="bg-gray-700 border border-gray-600 rounded-lg p-4"
+                              >
+                                {editingInsurerId === insurer.id ? (
+                                  <div className="space-y-3">
+                                    <input
+                                      type="text"
+                                      value={insurerFormData.name || ''}
+                                      onChange={(e) => setInsurerFormData({ ...insurerFormData, name: e.target.value })}
+                                      className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                      placeholder="Nome"
+                                    />
+                                    <div>
+                                      <label className="block text-xs text-gray-400 mb-1">Caixa</label>
+                                      <select
+                                        value={insurerFormData.box_number || 1}
+                                        onChange={(e) => setInsurerFormData({ ...insurerFormData, box_number: parseInt(e.target.value) })}
+                                        className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                      >
+                                        <option value={1}>Caixa 1</option>
+                                        <option value={2}>Caixa 2</option>
+                                        <option value={3}>Caixa 3</option>
+                                      </select>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      value={insurerFormData.logo_url || ''}
+                                      onChange={(e) => setInsurerFormData({ ...insurerFormData, logo_url: e.target.value })}
+                                      className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                      placeholder="URL do Logótipo"
+                                    />
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleUpdateInsurer(insurer.id)}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                      >
+                                        <Save className="w-4 h-4" />
+                                        Guardar
+                                      </button>
+                                      <button
+                                        onClick={cancelEditInsurer}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                      >
+                                        <X className="w-4 h-4" />
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <div className="flex flex-col gap-1">
+                                          <button
+                                            onClick={() => moveInsurer(insurer.id, 'up')}
+                                            disabled={index === 0 || movingInsurer === insurer.id}
+                                            className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                          >
+                                            <ArrowUp className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => moveInsurer(insurer.id, 'down')}
+                                            disabled={index === boxInsurers.length - 1 || movingInsurer === insurer.id}
+                                            className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                          >
+                                            <ArrowDown className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                        <div className="flex items-center gap-3 flex-1">
+                                          {/* Preview da imagem redonda */}
+                                          <div className="w-16 h-16 rounded-full bg-gray-600 border-2 border-gray-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            {insurer.logo_url ? (
+                                              <img
+                                                src={insurer.logo_url}
+                                                alt={insurer.name}
+                                                className="w-full h-full rounded-full object-cover"
+                                                onError={(e) => {
+                                                  const target = e.target as HTMLImageElement
+                                                  target.style.display = 'none'
+                                                  const parent = target.parentElement
+                                                  if (parent) {
+                                                    parent.innerHTML = `<span class="text-gray-400 text-xs font-bold">${insurer.name.substring(0, 2).toUpperCase()}</span>`
+                                                  }
+                                                }}
+                                              />
+                                            ) : (
+                                              <span className="text-gray-400 text-xs font-bold">
+                                                {insurer.name.substring(0, 2).toUpperCase()}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex-1">
+                                            <h3 className="text-white font-semibold mb-1">{insurer.name}</h3>
+                                            <p className="text-gray-400 text-xs">Caixa {insurer.box_number}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-3">
+                                      <label className="cursor-pointer">
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) handleInsurerImageUpload(insurer.id, file)
+                                          }}
+                                          disabled={uploadingInsurerImage === insurer.id}
+                                        />
+                                        <span className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
+                                          {uploadingInsurerImage === insurer.id ? (
+                                            'A fazer upload...'
+                                          ) : (
+                                            <>
+                                              <Upload className="w-4 h-4" />
+                                              Upload
+                                            </>
+                                          )}
+                                        </span>
+                                      </label>
+                                      <button
+                                        onClick={() => {
+                                          startEditInsurer(insurer)
+                                          alert('💡 Dica: Cole a URL da imagem no campo "URL do Logótipo" e clique em "Salvar"')
+                                        }}
+                                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                        title="Colar URL da imagem diretamente"
+                                      >
+                                        <Upload className="w-4 h-4" />
+                                        Colar URL
+                                      </button>
+                                      <button
+                                        onClick={() => startEditInsurer(insurer)}
+                                        className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                        Editar
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteInsurer(insurer.id)}
+                                        className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                        Excluir
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
