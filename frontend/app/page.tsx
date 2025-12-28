@@ -1371,21 +1371,30 @@ export default function Home() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
                 onClick={() => scrollParaSecao('home')}
               >
-                {/* Logo placeholder - substituir pela imagem quando disponível */}
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16">
-                  <div className="absolute inset-0 rounded-full bg-clinica-primary opacity-20 blur-xl"></div>
-                  <div className="relative w-full h-full rounded-full bg-gradient-to-br from-clinica-primary to-clinica-menu flex items-center justify-center shadow-lg">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-clinica-bg/20 backdrop-blur-sm flex items-center justify-center">
-                      <span className="text-clinica-bg font-bold text-lg sm:text-xl">CF</span>
-                    </div>
+                {/* Logo - Design baseado na imagem */}
+                <div className="flex items-center gap-4">
+                  {/* Parte principal do logo */}
+                  <div className="flex flex-col">
+                    {/* "CLÍNICA" - pequeno, maiúsculas, fino */}
+                    <span className="text-[10px] sm:text-xs font-light uppercase tracking-wider text-clinica-text leading-none">
+                      CLÍNICA
+                    </span>
+                    {/* "Freud" - grande, minúsculas, negrito, com f e d altos */}
+                    <span className="text-3xl sm:text-4xl md:text-5xl font-bold lowercase text-clinica-text leading-none mt-[-2px]">
+                      Freud
+                    </span>
+                  </div>
+                  
+                  {/* Texto vertical à direita */}
+                  <div className="hidden sm:flex flex-col justify-center gap-1 text-clinica-text/60 text-xs font-light lowercase">
+                    <span>psicoterapia</span>
+                    <span>psiquiatria</span>
+                    <span>psicologia</span>
                   </div>
                 </div>
-                <span className="text-xl sm:text-2xl font-bold text-clinica-primary hidden sm:block">
-                  Clínica <span className="text-clinica-menu">Freud</span>
-                </span>
               </motion.a>
 
               {/* Menu Desktop - Centro */}
@@ -2084,4 +2093,3 @@ export default function Home() {
     </div>
   )
 }
-
