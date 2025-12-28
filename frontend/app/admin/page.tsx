@@ -73,7 +73,7 @@ export default function AdminPage() {
   const [movingProfessional, setMovingProfessional] = useState<string | null>(null)  // UUID é string
 
   // Estados para gestão de serviços
-  type TabType = 'profissionais' | 'servicos' | 'depoimentos' | 'sobre-nos' | 'faqs'
+  type TabType = 'profissionais' | 'servicos' | 'depoimentos' | 'sobre-nos' | 'faqs' | 'seguradoras'
   const [activeTab, setActiveTab] = useState<TabType>('profissionais')
   const [services, setServices] = useState<Service[]>([])
   const [isLoadingServices, setIsLoadingServices] = useState(true)
@@ -138,6 +138,7 @@ export default function AdminPage() {
     fetchAboutSection()
     fetchAboutFeatures()
     fetchFAQs()
+    fetchInsurers()
   }, [])
 
   const fetchProfessionals = async () => {
@@ -1490,6 +1491,256 @@ export default function AdminPage() {
     }
   }
 
+  // Funções para gestão de seguradoras
+  const fetchInsurers = async () => {
+    try {
+      setIsLoadingInsurers(true)
+      console.log('🔍 A buscar seguradoras do Supabase...')
+      const { data, error } = await supabase
+        .from('insurers')
+        .select('*')
+        .order('box_number', { ascending: true })
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "insurers" não existe ainda.')
+          setInsurers([])
+          return
+        }
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} seguradoras encontradas:`, data)
+        setInsurers(data)
+      } else {
+        setInsurers([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar seguradoras:', error)
+      setInsurers([])
+    } finally {
+      setIsLoadingInsurers(false)
+    }
+  }
+
+  const handleCreateInsurer = async () => {
+    try {
+      // Verificar se a caixa já tem 4 seguradoras
+      const boxInsurers = insurers.filter(i => i.box_number === insurerFormData.box_number)
+      if (boxInsurers.length >= 4) {
+        alert(`⚠️ A caixa ${insurerFormData.box_number} já tem 4 seguradoras (máximo permitido).`)
+        return
+      }
+
+      const maxOrder = boxInsurers.length > 0 
+        ? Math.max(...boxInsurers.map(i => i.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        name: insurerFormData.name || '',
+        logo_url: insurerFormData.logo_url || null,
+        box_number: insurerFormData.box_number || 1,
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('insurers')
+        .insert([insertData])
+        .select()
+
+      if (error) {
+        console.error('Erro ao criar seguradora:', error)
+        alert(`Erro ao criar seguradora: ${error.message}`)
+        throw error
+      }
+
+      await fetchInsurers()
+      setIsCreatingInsurer(false)
+      setInsurerFormData({ name: '', logo_url: '', box_number: 1 })
+      alert('Seguradora criada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao criar seguradora:', error)
+    }
+  }
+
+  const handleUpdateInsurer = async (id: string) => {
+    try {
+      // Verificar se está a mudar de caixa e se a nova caixa já tem 4 seguradoras
+      const currentInsurer = insurers.find(i => i.id === id)
+      if (currentInsurer && insurerFormData.box_number && insurerFormData.box_number !== currentInsurer.box_number) {
+        const boxInsurers = insurers.filter(i => i.box_number === insurerFormData.box_number && i.id !== id)
+        if (boxInsurers.length >= 4) {
+          alert(`⚠️ A caixa ${insurerFormData.box_number} já tem 4 seguradoras (máximo permitido).`)
+          return
+        }
+      }
+
+      const { error } = await supabase
+        .from('insurers')
+        .update({
+          name: insurerFormData.name || '',
+          logo_url: insurerFormData.logo_url || null,
+          box_number: insurerFormData.box_number || 1,
+        })
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao atualizar seguradora:', error)
+        alert(`Erro ao atualizar seguradora: ${error.message}`)
+        throw error
+      }
+
+      await fetchInsurers()
+      setEditingInsurerId(null)
+      setInsurerFormData({ name: '', logo_url: '', box_number: 1 })
+      alert('Seguradora atualizada com sucesso!')
+    } catch (error) {
+      console.error('Erro ao atualizar seguradora:', error)
+    }
+  }
+
+  const handleDeleteInsurer = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta seguradora?')) return
+
+    try {
+      const { error } = await supabase
+        .from('insurers')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir seguradora:', error)
+        alert(`Erro ao excluir seguradora: ${error.message}`)
+        throw error
+      }
+
+      setInsurers(insurers.filter(i => i.id !== id))
+      alert('Seguradora excluída com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir seguradora:', error)
+    }
+  }
+
+  const startEditInsurer = (insurer: Insurer) => {
+    setEditingInsurerId(insurer.id)
+    setInsurerFormData({
+      name: insurer.name,
+      logo_url: insurer.logo_url || '',
+      box_number: insurer.box_number,
+    })
+  }
+
+  const cancelEditInsurer = () => {
+    setEditingInsurerId(null)
+    setIsCreatingInsurer(false)
+    setInsurerFormData({ name: '', logo_url: '', box_number: 1 })
+  }
+
+  const handleInsurerImageUpload = async (id: string, file: File) => {
+    setUploadingInsurerImage(id)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `insurer-${id}-${Math.random()}.${fileExt}`
+      const filePath = `insurers/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        alert(
+          '⚠️ Upload não disponível\n\n' +
+          'O bucket "photos" não está configurado no Supabase Storage.\n\n' +
+          '✅ Solução mais fácil:\n' +
+          '1. Clique no botão "Colar URL" (verde)\n' +
+          '2. Cole a URL da imagem no campo "URL do Logótipo"\n' +
+          '3. Clique em "Salvar"\n\n' +
+          '💡 Pode usar URLs de:\n' +
+          '• Imgur (imgur.com)\n' +
+          '• Google Drive (público)\n' +
+          '• Qualquer site com imagem pública'
+        )
+        throw uploadError
+      }
+
+      const { data } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath)
+
+      const { error: updateError } = await supabase
+        .from('insurers')
+        .update({ logo_url: data.publicUrl })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('Erro ao atualizar logótipo da seguradora:', updateError)
+        alert(`Erro ao atualizar logótipo: ${updateError.message}`)
+        throw updateError
+      }
+
+      await fetchInsurers()
+      alert('Logótipo da seguradora atualizado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer upload do logótipo da seguradora:', error)
+    } finally {
+      setUploadingInsurerImage(null)
+    }
+  }
+
+  const moveInsurer = async (id: string, direction: 'up' | 'down') => {
+    const insurer = insurers.find(i => i.id === id)
+    if (!insurer) return
+
+    const boxInsurers = insurers
+      .filter(i => i.box_number === insurer.box_number)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    
+    const index = boxInsurers.findIndex(i => i.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= boxInsurers.length) return
+
+    const otherInsurer = boxInsurers[newIndex]
+    setMovingInsurer(id)
+
+    try {
+      const tempOrder = insurer.order ?? 0
+      const otherOrder = otherInsurer.order ?? 0
+
+      await supabase
+        .from('insurers')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('insurers')
+        .update({ order: tempOrder })
+        .eq('id', otherInsurer.id)
+
+      const newInsurers = [...insurers]
+      const insurerIndex = newInsurers.findIndex(i => i.id === id)
+      const otherIndex = newInsurers.findIndex(i => i.id === otherInsurer.id)
+      
+      if (insurerIndex !== -1 && otherIndex !== -1) {
+        const temp = newInsurers[insurerIndex].order
+        newInsurers[insurerIndex].order = newInsurers[otherIndex].order
+        newInsurers[otherIndex].order = temp
+        setInsurers(newInsurers)
+      }
+    } catch (error) {
+      console.error('Erro ao mover seguradora:', error)
+      alert('Erro ao mover seguradora. Tente novamente.')
+    } finally {
+      setMovingInsurer(null)
+    }
+  }
+
   const startEdit = (professional: Professional) => {
     console.log('✏️ Iniciando edição de:', professional)
     setEditingId(professional.id)
@@ -1607,6 +1858,16 @@ export default function AdminPage() {
               }`}
             >
               FAQs
+            </button>
+            <button
+              onClick={() => setActiveTab('seguradoras')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'seguradoras'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Seguradoras
             </button>
           </div>
         </div>
@@ -2957,6 +3218,278 @@ export default function AdminPage() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* SECÇÃO SEGURADORAS */}
+        {activeTab === 'seguradoras' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Gestão de <span className="text-robinhood-green">Seguradoras</span>
+              </h1>
+              <p className="text-gray-400 text-sm">Gerir seguradoras organizadas em 3 caixas (máximo 4 por caixa)</p>
+            </div>
+
+            {isLoadingInsurers ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar seguradoras...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Botão Adicionar Seguradora */}
+                {!isCreatingInsurer && (
+                  <button
+                    onClick={() => setIsCreatingInsurer(true)}
+                    className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Adicionar Seguradora
+                  </button>
+                )}
+
+                {/* Formulário de Criação */}
+                {isCreatingInsurer && (
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                    <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                      <Building2 className="w-6 h-6 text-robinhood-green" />
+                      Nova Seguradora
+                    </h2>
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        placeholder="Nome da Seguradora (ex: Medicare)"
+                        value={insurerFormData.name || ''}
+                        onChange={(e) => setInsurerFormData({ ...insurerFormData, name: e.target.value })}
+                        className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                      />
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">
+                          Caixa (1, 2 ou 3)
+                        </label>
+                        <select
+                          value={insurerFormData.box_number || 1}
+                          onChange={(e) => setInsurerFormData({ ...insurerFormData, box_number: parseInt(e.target.value) })}
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                        >
+                          <option value={1}>Caixa 1</option>
+                          <option value={2}>Caixa 2</option>
+                          <option value={3}>Caixa 3</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">
+                          URL do Logótipo (imagem redonda)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://exemplo.com/logo.jpg"
+                          value={insurerFormData.logo_url || ''}
+                          onChange={(e) => setInsurerFormData({ ...insurerFormData, logo_url: e.target.value })}
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          💡 Pode usar URLs de imagens de qualquer site (ex: Imgur, Google Drive público, etc.)
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCreateInsurer}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <Save className="w-5 h-5" />
+                          Guardar Seguradora
+                        </button>
+                        <button
+                          onClick={cancelEditInsurer}
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de Seguradoras agrupadas por caixa */}
+                <div className="space-y-6">
+                  {[1, 2, 3].map((boxNum) => {
+                    const boxInsurers = insurers
+                      .filter(i => i.box_number === boxNum)
+                      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                    
+                    return (
+                      <div key={boxNum} className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                          <Building2 className="w-5 h-5 text-robinhood-green" />
+                          Caixa {boxNum} ({boxInsurers.length}/4)
+                        </h3>
+                        {boxInsurers.length === 0 ? (
+                          <p className="text-gray-400 text-sm text-center py-4">Nenhuma seguradora nesta caixa.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {boxInsurers.map((insurer, index) => (
+                              <div
+                                key={insurer.id}
+                                className="bg-gray-700 border border-gray-600 rounded-lg p-4"
+                              >
+                                {editingInsurerId === insurer.id ? (
+                                  <div className="space-y-3">
+                                    <input
+                                      type="text"
+                                      value={insurerFormData.name || ''}
+                                      onChange={(e) => setInsurerFormData({ ...insurerFormData, name: e.target.value })}
+                                      className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                      placeholder="Nome"
+                                    />
+                                    <div>
+                                      <label className="block text-xs text-gray-400 mb-1">Caixa</label>
+                                      <select
+                                        value={insurerFormData.box_number || 1}
+                                        onChange={(e) => setInsurerFormData({ ...insurerFormData, box_number: parseInt(e.target.value) })}
+                                        className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                      >
+                                        <option value={1}>Caixa 1</option>
+                                        <option value={2}>Caixa 2</option>
+                                        <option value={3}>Caixa 3</option>
+                                      </select>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      value={insurerFormData.logo_url || ''}
+                                      onChange={(e) => setInsurerFormData({ ...insurerFormData, logo_url: e.target.value })}
+                                      className="w-full bg-gray-600 text-white border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                                      placeholder="URL do Logótipo"
+                                    />
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleUpdateInsurer(insurer.id)}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                      >
+                                        <Save className="w-4 h-4" />
+                                        Guardar
+                                      </button>
+                                      <button
+                                        onClick={cancelEditInsurer}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                      >
+                                        <X className="w-4 h-4" />
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <div className="flex flex-col gap-1">
+                                          <button
+                                            onClick={() => moveInsurer(insurer.id, 'up')}
+                                            disabled={index === 0 || movingInsurer === insurer.id}
+                                            className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                          >
+                                            <ArrowUp className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => moveInsurer(insurer.id, 'down')}
+                                            disabled={index === boxInsurers.length - 1 || movingInsurer === insurer.id}
+                                            className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                          >
+                                            <ArrowDown className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                        <div className="flex items-center gap-3 flex-1">
+                                          {/* Preview da imagem redonda */}
+                                          <div className="w-16 h-16 rounded-full bg-gray-600 border-2 border-gray-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            {insurer.logo_url ? (
+                                              <img
+                                                src={insurer.logo_url}
+                                                alt={insurer.name}
+                                                className="w-full h-full rounded-full object-cover"
+                                                onError={(e) => {
+                                                  const target = e.target as HTMLImageElement
+                                                  target.style.display = 'none'
+                                                  const parent = target.parentElement
+                                                  if (parent) {
+                                                    parent.innerHTML = `<span class="text-gray-400 text-xs font-bold">${insurer.name.substring(0, 2).toUpperCase()}</span>`
+                                                  }
+                                                }}
+                                              />
+                                            ) : (
+                                              <span className="text-gray-400 text-xs font-bold">
+                                                {insurer.name.substring(0, 2).toUpperCase()}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex-1">
+                                            <h3 className="text-white font-semibold mb-1">{insurer.name}</h3>
+                                            <p className="text-gray-400 text-xs">Caixa {insurer.box_number}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-3">
+                                      <label className="cursor-pointer">
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) handleInsurerImageUpload(insurer.id, file)
+                                          }}
+                                          disabled={uploadingInsurerImage === insurer.id}
+                                        />
+                                        <span className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
+                                          {uploadingInsurerImage === insurer.id ? (
+                                            'A fazer upload...'
+                                          ) : (
+                                            <>
+                                              <Upload className="w-4 h-4" />
+                                              Upload
+                                            </>
+                                          )}
+                                        </span>
+                                      </label>
+                                      <button
+                                        onClick={() => {
+                                          startEditInsurer(insurer)
+                                          alert('💡 Dica: Cole a URL da imagem no campo "URL do Logótipo" e clique em "Salvar"')
+                                        }}
+                                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                        title="Colar URL da imagem diretamente"
+                                      >
+                                        <Upload className="w-4 h-4" />
+                                        Colar URL
+                                      </button>
+                                      <button
+                                        onClick={() => startEditInsurer(insurer)}
+                                        className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                        Editar
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteInsurer(insurer.id)}
+                                        className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                        Excluir
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
