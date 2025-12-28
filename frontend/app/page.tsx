@@ -1768,7 +1768,7 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Contactos</h2>
             <p className="text-lg text-clinica-text">Entre em contacto connosco</p>
           </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1791,29 +1791,30 @@ export default function Home() {
               <h3 className="text-xl font-bold mb-2 text-clinica-text">Email</h3>
               <p className="text-clinica-text font-medium">consulta@clinicafreud.pt</p>
             </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 text-center shadow-md"
-            >
-              <MapPin className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Morada</h3>
-              <p className="text-clinica-text font-medium">Avenida 5 de Outubro, 122, 8º Esq., 1050-061 Lisboa</p>
-            </motion.div>
           </div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
             className="mt-8 bg-clinica-accent border border-clinica-primary rounded-xl p-6 text-center shadow-md"
           >
             <Clock className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
             <h3 className="text-xl font-bold mb-2 text-clinica-text">Horário de Funcionamento</h3>
-            <p className="text-clinica-text font-medium">Segunda a Sexta: 9h - 19h</p>
-            <p className="text-clinica-text font-medium">Sábado: 9h - 13h</p>
+            <p className="text-clinica-text font-medium mb-4">Segunda a Sexta: 9h - 19h</p>
+            <p className="text-clinica-text font-medium mb-4">Sábado: 9h - 13h</p>
+            <div className="mt-6 pt-6 border-t border-clinica-primary/20">
+              <MapPin className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
+              <h3 className="text-xl font-bold mb-2 text-clinica-text">Morada</h3>
+              <a
+                href="https://maps.app.goo.gl/MMgb3FuxSeLLemSA6"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-clinica-primary font-medium hover:text-clinica-menu hover:underline transition-colors inline-block"
+              >
+                Avenida 5 de Outubro, 122, 8º Esq., 1050-061 Lisboa
+              </a>
+            </div>
           </motion.div>
         </div>
       </section>
