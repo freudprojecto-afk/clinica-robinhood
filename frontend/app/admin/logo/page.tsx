@@ -87,7 +87,6 @@ export default function AdminLogoPage() {
       if (uploadError) {
         console.error('❌ Erro detalhado do upload:', {
           message: uploadError.message,
-          statusCode: uploadError.statusCode,
           error: uploadError
         })
         
@@ -96,7 +95,8 @@ export default function AdminLogoPage() {
             uploadError.message.includes('row-level security') ||
             uploadError.message.includes('RLS') ||
             uploadError.message.includes('permission denied') ||
-            uploadError.statusCode === 403) {
+            uploadError.message.includes('403') ||
+            uploadError.message.includes('Forbidden')) {
           throw new Error('❌ ERRO DE PERMISSÃO: A política INSERT não está configurada corretamente.\n\n📋 PASSO A PASSO:\n\n1. Vá ao Supabase Dashboard → Storage → Policies\n2. Clique em "New policy" ao lado do bucket "logos"\n3. Configure:\n   - Policy name: "Allow uploads to logos"\n   - Allowed operation: INSERT\n   - Target roles: anon, authenticated (marque ambas)\n   - USING expression: bucket_id = \'logos\'\n   - WITH CHECK expression: bucket_id = \'logos\'\n4. Clique em "Save policy"\n\n⚠️ A política atual pode estar muito restritiva (só permite JPG numa pasta específica).\nCrie uma nova política INSERT simples como descrito acima.')
         } else if (uploadError.message.includes('Bucket not found') || 
                    uploadError.message.includes('does not exist') ||
@@ -113,7 +113,7 @@ export default function AdminLogoPage() {
           // Já estamos a usar upsert: true, então isto não deveria acontecer
           throw new Error('Ficheiro já existe. O sistema deveria substituir automaticamente. Se o erro persistir, tente remover o ficheiro antigo manualmente no Supabase.')
         } else {
-          throw new Error(`Erro ao fazer upload: ${uploadError.message}\n\nCódigo do erro: ${uploadError.statusCode || 'N/A'}\n\nVerifique:\n1. Se o bucket "logos" existe\n2. Se as políticas permitem INSERT\n3. Se as variáveis de ambiente estão configuradas`)
+          throw new Error(`Erro ao fazer upload: ${uploadError.message}\n\nVerifique:\n1. Se o bucket "logos" existe\n2. Se as políticas permitem INSERT\n3. Se as variáveis de ambiente estão configuradas`)
         }
       }
 
