@@ -38,31 +38,87 @@ export default function AdminLogoPage() {
     setSuccess(false)
 
     try {
-      // Verificar se o bucket existe, se não criar
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets()
-      
-      if (!buckets?.find(b => b.name === 'logos')) {
-        // Criar bucket se não existir (requer permissões admin)
-        console.log('⚠️ Bucket "logos" não existe. Precisa ser criado no Supabase Dashboard.')
-        setError('Bucket "logos" não existe. Por favor, crie-o no Supabase Dashboard primeiro.')
-        setUploading(false)
-        return
-      }
+      // Não verificar se o bucket existe - tentar fazer upload diretamente
+      // A verificação pode falhar por falta de permissões, mas o upload pode funcionar
+      console.log('🚀 Tentando fazer upload do logo...')
+      console.log('🔍 Verificando configuração do Supabase...')
+      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Configurado' : 'NÃO CONFIGURADO')
+      console.log('Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Configurado' : 'NÃO CONFIGURADO')
 
       // Nome do ficheiro (sempre "logo" para substituir o anterior)
       const fileExt = file.name.split('.').pop()
       const fileName = `logo.${fileExt}`
 
-      // Fazer upload do ficheiro
-      const { error: uploadError } = await supabase.storage
+      // Tentar remover ficheiro antigo se existir (opcional - o upsert: true deve substituir)
+      // Não bloquear se falhar
+      try {
+        const { data: existingFiles } = await supabase.storage
+          .from('logos')
+          .list('', { search: 'logo' })
+
+        if (existingFiles && existingFiles.length > 0) {
+          const filesToRemove = existingFiles
+            .filter((f: any) => f.name.toLowerCase().startsWith('logo.'))
+            .map((f: any) => f.name)
+          
+          if (filesToRemove.length > 0) {
+            await supabase.storage.from('logos').remove(filesToRemove)
+            console.log('✅ Ficheiros antigos removidos:', filesToRemove)
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Não foi possível remover ficheiros antigos (continuando mesmo assim):', err)
+        // Continuar - o upsert: true deve substituir
+      }
+
+      // Fazer upload do novo ficheiro
+      console.log('📤 A fazer upload do ficheiro:', fileName)
+      console.log('📦 Tamanho do ficheiro:', file.size, 'bytes')
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('logos')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true // Substituir se já existir
         })
 
+      console.log('📊 Resultado do upload:', { uploadData, uploadError })
+
       if (uploadError) {
-        throw uploadError
+        console.error('❌ Erro detalhado do upload:', {
+          message: uploadError.message,
+          statusCode: uploadError.statusCode,
+          error: uploadError
+        })
+        
+        // Mensagens de erro mais específicas
+        if (uploadError.message.includes('new row violates row-level security') || 
+            uploadError.message.includes('row-level security') ||
+            uploadError.message.includes('RLS') ||
+            uploadError.message.includes('permission denied') ||
+            uploadError.statusCode === 403) {
+          throw new Error('❌ ERRO DE PERMISSÃO: A política INSERT não está configurada corretamente.\n\n📋 PASSO A PASSO:\n\n1. Vá ao Supabase Dashboard → Storage → Policies\n2. Clique em "New policy" ao lado do bucket "logos"\n3. Configure:\n   - Policy name: "Allow uploads to logos"\n   - Allowed operation: INSERT\n   - Target roles: anon, authenticated (marque ambas)\n   - USING expression: bucket_id = \'logos\'\n   - WITH CHECK expression: bucket_id = \'logos\'\n4. Clique em "Save policy"\n\n⚠️ A política atual pode estar muito restritiva (só permite JPG numa pasta específica).\nCrie uma nova política INSERT simples como descrito acima.')
+        } else if (uploadError.message.includes('Bucket not found') || 
+                   uploadError.message.includes('does not exist') ||
+                   uploadError.message.includes('not found')) {
+          throw new Error('❌ Bucket "logos" não encontrado ou sem permissão de acesso.\n\nVerifique:\n1. Se o bucket "logos" existe no Supabase Dashboard (Storage > Buckets)\n2. Se o bucket está marcado como Público (PUBLIC)\n3. Se as políticas estão configuradas corretamente\n\nErro técnico: ' + uploadError.message)
+        } else if (uploadError.message.includes('JWT') || 
+                   uploadError.message.includes('token') ||
+                   uploadError.message.includes('Unauthorized')) {
+          throw new Error('Erro de autenticação. Verifique se as variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY estão configuradas corretamente no Vercel.')
+        } else if (uploadError.message.includes('duplicate') || 
+                   uploadError.message.includes('already exists')) {
+          // Se já existe, tentar substituir
+          console.log('Ficheiro já existe, tentando substituir...')
+          // Já estamos a usar upsert: true, então isto não deveria acontecer
+          throw new Error('Ficheiro já existe. O sistema deveria substituir automaticamente. Se o erro persistir, tente remover o ficheiro antigo manualmente no Supabase.')
+        } else {
+          throw new Error(`Erro ao fazer upload: ${uploadError.message}\n\nCódigo do erro: ${uploadError.statusCode || 'N/A'}\n\nVerifique:\n1. Se o bucket "logos" existe\n2. Se as políticas permitem INSERT\n3. Se as variáveis de ambiente estão configuradas`)
+        }
+      }
+
+      if (!uploadData) {
+        throw new Error('Upload falhou: nenhum dado retornado')
       }
 
       setSuccess(true)
@@ -74,6 +130,12 @@ export default function AdminLogoPage() {
       if (fileInput) {
         fileInput.value = ''
       }
+
+      // Aguardar um pouco e recarregar a página principal para ver o logo atualizado
+      setTimeout(() => {
+        // Abrir a página principal numa nova aba para verificar
+        window.open('/', '_blank')
+      }, 2000)
     } catch (err) {
       console.error('Erro ao fazer upload:', err)
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao fazer upload')
@@ -91,13 +153,32 @@ export default function AdminLogoPage() {
           <div className="space-y-6">
             {/* Instruções */}
             <div className="bg-clinica-bg border border-clinica-primary rounded-lg p-4">
-              <h2 className="text-lg font-semibold text-clinica-text mb-2">Instruções:</h2>
-              <ol className="list-decimal list-inside space-y-1 text-clinica-text text-sm">
-                <li>No Supabase Dashboard, vá a <strong>Storage</strong></li>
-                <li>Crie um bucket chamado <strong>"logos"</strong> (se ainda não existir)</li>
-                <li>Configure as políticas do bucket para permitir leitura pública</li>
-                <li>Selecione uma imagem abaixo e faça upload</li>
+              <h2 className="text-lg font-semibold text-clinica-text mb-2">📋 Configuração Necessária no Supabase:</h2>
+              <ol className="list-decimal list-inside space-y-2 text-clinica-text text-sm">
+                <li>Verifique se o bucket <strong>"logos"</strong> existe e está marcado como <strong>Público</strong></li>
+                <li><strong>Configure a política INSERT (CRÍTICO):</strong>
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-xs text-clinica-text/80">
+                    <li>Vá a: <strong>Supabase Dashboard → Storage → Policies</strong></li>
+                    <li>Ou: <strong>Storage → Buckets → logos → Policies</strong></li>
+                    <li>Clique em <strong>"New policy"</strong></li>
+                    <li>Configure:
+                      <div className="ml-4 mt-1 p-2 bg-clinica-accent/30 rounded text-xs font-mono">
+                        <div>Policy name: <strong>"Allow uploads to logos"</strong></div>
+                        <div>Allowed operation: <strong>INSERT</strong></div>
+                        <div>Target roles: <strong>anon, authenticated</strong> (marque ambas)</div>
+                        <div>USING expression: <code className="bg-clinica-accent px-1 rounded">bucket_id = 'logos'</code></div>
+                        <div>WITH CHECK expression: <code className="bg-clinica-accent px-1 rounded">bucket_id = 'logos'</code></div>
+                      </div>
+                    </li>
+                    <li>Clique em <strong>"Save policy"</strong></li>
+                  </ul>
+                </li>
+                <li>Verifique se já existe uma política <strong>SELECT</strong> para leitura (anon, authenticated)</li>
+                <li>Tente fazer upload novamente abaixo</li>
               </ol>
+              <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded text-xs text-red-200">
+                ⚠️ <strong>Problema comum:</strong> A política INSERT pode estar muito restritiva (só permite JPG numa pasta específica). Crie uma nova política INSERT simples como descrito acima.
+              </div>
             </div>
 
             {/* Upload Area */}
@@ -128,8 +209,8 @@ export default function AdminLogoPage() {
             {/* Preview */}
             {preview && (
               <div className="bg-clinica-bg border border-clinica-primary rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-clinica-text mb-2">Pré-visualização:</h3>
-                <div className="w-32 h-20 sm:w-40 sm:h-24 rounded-xl bg-clinica-bg border-2 border-clinica-primary flex items-center justify-center overflow-hidden">
+                <h3 className="text-sm font-semibold text-clinica-text mb-2">Pré-visualização (como aparecerá no site):</h3>
+                <div className="w-32 h-20 sm:w-40 sm:h-24 rounded-xl bg-clinica-bg flex items-center justify-center overflow-hidden">
                   <img
                     src={preview}
                     alt="Preview"
