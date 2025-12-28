@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star, FileText } from 'lucide-react'
+import { Plus, Edit, Trash2, Upload, ArrowUp, ArrowDown, Save, X, Star, FileText, HelpCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Professional {
@@ -50,6 +50,13 @@ interface AboutFeature {
   order?: number
 }
 
+interface FAQ {
+  id: string
+  question: string
+  answer: string
+  order?: number
+}
+
 export default function AdminPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -66,7 +73,7 @@ export default function AdminPage() {
   const [movingProfessional, setMovingProfessional] = useState<string | null>(null)  // UUID é string
 
   // Estados para gestão de serviços
-  type TabType = 'profissionais' | 'servicos' | 'depoimentos' | 'sobre-nos'
+  type TabType = 'profissionais' | 'servicos' | 'depoimentos' | 'sobre-nos' | 'faqs'
   const [activeTab, setActiveTab] = useState<TabType>('profissionais')
   const [services, setServices] = useState<Service[]>([])
   const [isLoadingServices, setIsLoadingServices] = useState(true)
@@ -108,6 +115,17 @@ export default function AdminPage() {
   const [movingFeature, setMovingFeature] = useState<string | null>(null)
   const [uploadingFeatureImage, setUploadingFeatureImage] = useState<string | null>(null)
 
+  // Estados para gestão de FAQs
+  const [faqs, setFaqs] = useState<FAQ[]>([])
+  const [isLoadingFAQs, setIsLoadingFAQs] = useState(true)
+  const [editingFAQId, setEditingFAQId] = useState<string | null>(null)
+  const [isCreatingFAQ, setIsCreatingFAQ] = useState(false)
+  const [faqFormData, setFaqFormData] = useState<Partial<FAQ>>({
+    question: '',
+    answer: '',
+  })
+  const [movingFAQ, setMovingFAQ] = useState<string | null>(null)
+
   useEffect(() => {
     // Verificar se o Supabase está configurado
     console.log('🔧 Verificando configuração do Supabase...')
@@ -119,6 +137,7 @@ export default function AdminPage() {
     fetchTestimonials()
     fetchAboutSection()
     fetchAboutFeatures()
+    fetchFAQs()
   }, [])
 
   const fetchProfessionals = async () => {
@@ -1305,6 +1324,172 @@ export default function AdminPage() {
     }
   }
 
+  // Funções para gestão de FAQs
+  const fetchFAQs = async () => {
+    try {
+      setIsLoadingFAQs(true)
+      console.log('🔍 A buscar FAQs do Supabase...')
+      const { data, error } = await supabase
+        .from('faqs')
+        .select('*')
+        .order('order', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('relation')) {
+          console.warn('⚠️ Tabela "faqs" não existe ainda.')
+          setFaqs([])
+          return
+        }
+        throw error
+      }
+
+      if (data) {
+        console.log(`✅ ${data.length} FAQs encontrados:`, data)
+        setFaqs(data)
+      } else {
+        setFaqs([])
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar FAQs:', error)
+      setFaqs([])
+    } finally {
+      setIsLoadingFAQs(false)
+    }
+  }
+
+  const handleCreateFAQ = async () => {
+    try {
+      const maxOrder = faqs.length > 0 
+        ? Math.max(...faqs.map(f => f.order ?? 0), 0)
+        : 0
+      
+      const newOrder = maxOrder + 1
+
+      const insertData: any = {
+        question: faqFormData.question || '',
+        answer: faqFormData.answer || '',
+        order: newOrder,
+      }
+
+      const { data, error } = await supabase
+        .from('faqs')
+        .insert([insertData])
+        .select()
+
+      if (error) {
+        console.error('Erro ao criar FAQ:', error)
+        alert(`Erro ao criar FAQ: ${error.message}`)
+        throw error
+      }
+
+      await fetchFAQs()
+      setIsCreatingFAQ(false)
+      setFaqFormData({ question: '', answer: '' })
+      alert('FAQ criado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao criar FAQ:', error)
+    }
+  }
+
+  const handleUpdateFAQ = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('faqs')
+        .update({
+          question: faqFormData.question || '',
+          answer: faqFormData.answer || '',
+        })
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao atualizar FAQ:', error)
+        alert(`Erro ao atualizar FAQ: ${error.message}`)
+        throw error
+      }
+
+      await fetchFAQs()
+      setEditingFAQId(null)
+      setFaqFormData({ question: '', answer: '' })
+      alert('FAQ atualizado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao atualizar FAQ:', error)
+    }
+  }
+
+  const handleDeleteFAQ = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este FAQ?')) return
+
+    try {
+      const { error } = await supabase
+        .from('faqs')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao excluir FAQ:', error)
+        alert(`Erro ao excluir FAQ: ${error.message}`)
+        throw error
+      }
+
+      setFaqs(faqs.filter(f => f.id !== id))
+      alert('FAQ excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir FAQ:', error)
+    }
+  }
+
+  const startEditFAQ = (faq: FAQ) => {
+    setEditingFAQId(faq.id)
+    setFaqFormData({
+      question: faq.question,
+      answer: faq.answer,
+    })
+  }
+
+  const cancelEditFAQ = () => {
+    setEditingFAQId(null)
+    setIsCreatingFAQ(false)
+    setFaqFormData({ question: '', answer: '' })
+  }
+
+  const moveFAQ = async (id: string, direction: 'up' | 'down') => {
+    const index = faqs.findIndex(f => f.id === id)
+    if (index === -1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= faqs.length) return
+
+    const faq = faqs[index]
+    const otherFAQ = faqs[newIndex]
+
+    setMovingFAQ(id)
+
+    try {
+      const tempOrder = faq.order ?? 0
+      const otherOrder = otherFAQ.order ?? 0
+
+      await supabase
+        .from('faqs')
+        .update({ order: otherOrder })
+        .eq('id', id)
+
+      await supabase
+        .from('faqs')
+        .update({ order: tempOrder })
+        .eq('id', otherFAQ.id)
+
+      const newFAQs = [...faqs]
+      ;[newFAQs[index], newFAQs[newIndex]] = [newFAQs[newIndex], newFAQs[index]]
+      setFaqs(newFAQs)
+    } catch (error) {
+      console.error('Erro ao mover FAQ:', error)
+      alert('Erro ao mover FAQ. Tente novamente.')
+    } finally {
+      setMovingFAQ(null)
+    }
+  }
+
   const startEdit = (professional: Professional) => {
     console.log('✏️ Iniciando edição de:', professional)
     setEditingId(professional.id)
@@ -1412,6 +1597,16 @@ export default function AdminPage() {
               }`}
             >
               Sobre Nós
+            </button>
+            <button
+              onClick={() => setActiveTab('faqs')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'faqs'
+                  ? 'text-robinhood-green border-b-2 border-robinhood-green'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              FAQs
             </button>
           </div>
         </div>
@@ -2594,6 +2789,174 @@ export default function AdminPage() {
                       ))
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* SECÇÃO FAQs */}
+        {activeTab === 'faqs' && (
+          <>
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Gestão de <span className="text-robinhood-green">FAQs</span>
+              </h1>
+              <p className="text-gray-400 text-sm">Gerir perguntas frequentes e respostas</p>
+            </div>
+
+            {isLoadingFAQs ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">A carregar FAQs...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Botão Adicionar FAQ */}
+                {!isCreatingFAQ && (
+                  <button
+                    onClick={() => setIsCreatingFAQ(true)}
+                    className="flex items-center gap-2 bg-robinhood-green text-robinhood-dark px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Adicionar FAQ
+                  </button>
+                )}
+
+                {/* Formulário de Criação */}
+                {isCreatingFAQ && (
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                    <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                      <HelpCircle className="w-6 h-6 text-robinhood-green" />
+                      Novo FAQ
+                    </h2>
+                    <div className="space-y-4">
+                      <input
+                        type="text"
+                        placeholder="Pergunta"
+                        value={faqFormData.question || ''}
+                        onChange={(e) => setFaqFormData({ ...faqFormData, question: e.target.value })}
+                        className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green"
+                      />
+                      <textarea
+                        placeholder="Resposta"
+                        value={faqFormData.answer || ''}
+                        onChange={(e) => setFaqFormData({ ...faqFormData, answer: e.target.value })}
+                        className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-robinhood-green min-h-[120px]"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCreateFAQ}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <Save className="w-5 h-5" />
+                          Guardar FAQ
+                        </button>
+                        <button
+                          onClick={cancelEditFAQ}
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de FAQs */}
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {faqs.length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-4">Nenhum FAQ adicionado ainda.</p>
+                  ) : (
+                    faqs.map((faq, index) => (
+                      <div
+                        key={faq.id}
+                        className="bg-gray-800 border border-gray-700 rounded-lg p-4"
+                      >
+                        {editingFAQId === faq.id ? (
+                          <div className="space-y-3">
+                            <input
+                              type="text"
+                              value={faqFormData.question || ''}
+                              onChange={(e) => setFaqFormData({ ...faqFormData, question: e.target.value })}
+                              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green text-sm"
+                            />
+                            <textarea
+                              value={faqFormData.answer || ''}
+                              onChange={(e) => setFaqFormData({ ...faqFormData, answer: e.target.value })}
+                              className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-robinhood-green min-h-[100px] text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleUpdateFAQ(faq.id)}
+                                className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <Save className="w-4 h-4" />
+                                Guardar
+                              </button>
+                              <button
+                                onClick={cancelEditFAQ}
+                                className="flex-1 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <X className="w-4 h-4" />
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2 flex-1">
+                                <div className="flex flex-col gap-1">
+                                  <button
+                                    onClick={() => moveFAQ(faq.id, 'up')}
+                                    disabled={index === 0 || movingFAQ === faq.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowUp className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveFAQ(faq.id, 'down')}
+                                    disabled={index === faqs.length - 1 || movingFAQ === faq.id}
+                                    className="text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <ArrowDown className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-robinhood-green/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                      <HelpCircle className="w-4 h-4 text-robinhood-green" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="text-white font-semibold mb-1">{faq.question}</h3>
+                                      <p className="text-gray-300 text-sm line-clamp-2">{faq.answer}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={() => startEditFAQ(faq)}
+                                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFAQ(faq.id)}
+                                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Excluir
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
