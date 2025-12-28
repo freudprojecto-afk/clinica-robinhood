@@ -1608,7 +1608,7 @@ export default function Home() {
                 Tratamento de{' '}
                 <span className="text-clinica-cta">Burnout</span>,{' '}
                 <span className="text-clinica-cta">Ansiedade</span>,{' '}
-                <span className="text-clinica-cta">Bullying</span> e Problemas Relacionais e outros...
+                <span className="text-clinica-cta">Bullying</span> , Problemas Relacionais e outros...
               </h1>
 
               {/* Botão Agendar Consulta - Estilo Robinhood */}
@@ -1910,4 +1910,5 @@ export default function Home() {
     </div>
   )
 }
+
 
