@@ -1352,8 +1352,8 @@ export default function Home() {
             allow="autoplay; encrypted-media"
             allowFullScreen
             style={{
-              opacity: 0.5, // Esbatido (50% de opacidade - aumentado para mais visibilidade)
-              filter: 'brightness(0.85) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
+              opacity: 0.9, // Esbatido (90% de opacidade - aumentado para mais visibilidade)
+              filter: 'brightness(0.91) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
               pointerEvents: 'none', // Não interferir com cliques
             }}
           />
@@ -1608,7 +1608,7 @@ export default function Home() {
                 Tratamento de{' '}
                 <span className="text-clinica-cta">Burnout</span>,{' '}
                 <span className="text-clinica-cta">Ansiedade</span>,{' '}
-                <span className="text-clinica-cta">Bullying</span> e Problemas Relacionais e outros...
+                <span className="text-clinica-cta">Bullying</span> , Problemas Relacionais e outros...
               </h1>
 
               {/* Botão Agendar Consulta - Estilo Robinhood */}
@@ -2084,3 +2084,4 @@ export default function Home() {
     </div>
   )
 }
+
