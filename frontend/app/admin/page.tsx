@@ -57,6 +57,14 @@ interface FAQ {
   order?: number
 }
 
+interface Insurer {
+  id: string
+  name: string
+  logo_url?: string
+  order?: number
+  box_number: number  // 1, 2 ou 3
+}
+
 export default function AdminPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [isLoading, setIsLoading] = useState(true)
