@@ -49,6 +49,14 @@ interface FAQ {
   order?: number
 }
 
+interface Insurer {
+  id: string
+  name: string
+  logo_url?: string
+  order?: number
+  box_number: number  // 1, 2 ou 3
+}
+
 // Componente da secção Corpo Clínico
 function CorpoClinicoSection() {
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
@@ -313,7 +321,7 @@ function CorpoClinicoSection() {
           className="text-center mb-12"
         >
           <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Corpo Clínico</h2>
-          <p className="text-lg text-clinica-text mb-3">Conheça a nossa equipa de psicólogos e psiquiatras experientes</p>
+          <p className="text-lg text-clinica-text mb-3">Conheça nossa equipa de psicólogos e psiquiatras experientes</p>
           <p className="text-lg font-semibold text-clinica-menu">Seleccione a especialidade</p>
         </motion.div>
 
