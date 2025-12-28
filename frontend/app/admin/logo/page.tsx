@@ -49,36 +49,110 @@ export default function AdminLogoPage() {
       const fileExt = file.name.split('.').pop()
       const fileName = `logo.${fileExt}`
 
-      // Tentar remover ficheiro antigo se existir (opcional - o upsert: true deve substituir)
-      // Não bloquear se falhar
+      // Tentar remover TODOS os ficheiros antigos primeiro (para garantir substituição)
+      // Isto evita problemas com upsert e diferentes extensões
       try {
-        const { data: existingFiles } = await supabase.storage
+        console.log('🗑️ A tentar remover ficheiros antigos...')
+        
+        // Primeiro, tentar listar ficheiros
+        const { data: existingFiles, error: listError } = await supabase.storage
           .from('logos')
-          .list('', { search: 'logo' })
+          .list('', {
+            limit: 100,
+            sortBy: { column: 'created_at', order: 'desc' }
+          })
 
-        if (existingFiles && existingFiles.length > 0) {
+        if (listError) {
+          console.warn('⚠️ Erro ao listar ficheiros:', listError)
+          console.log('🔄 Tentando remover ficheiro específico diretamente...')
+          
+          // Se não conseguir listar, tentar remover o ficheiro específico diretamente
+          // (pode ter extensões diferentes: .png, .jpg, .svg, .webp)
+          const possibleExtensions = ['png', 'jpg', 'jpeg', 'svg', 'webp']
+          const filesToTryRemove = possibleExtensions.map(ext => `logo.${ext}`)
+          
+          console.log('🗑️ Tentando remover possíveis ficheiros:', filesToTryRemove)
+          const { error: directRemoveError } = await supabase.storage
+            .from('logos')
+            .remove(filesToTryRemove)
+          
+          if (directRemoveError) {
+            console.warn('⚠️ Não foi possível remover ficheiros diretamente:', directRemoveError)
+          } else {
+            console.log('✅ Tentativa de remoção direta concluída')
+          }
+        } else if (existingFiles && existingFiles.length > 0) {
+          // Remover TODOS os ficheiros que começam com "logo" (independente da extensão)
           const filesToRemove = existingFiles
             .filter((f: any) => f.name.toLowerCase().startsWith('logo.'))
             .map((f: any) => f.name)
           
+          console.log('📋 Ficheiros encontrados no bucket:', existingFiles.map((f: any) => f.name))
+          console.log('🗑️ Ficheiros a remover:', filesToRemove)
+          
           if (filesToRemove.length > 0) {
-            await supabase.storage.from('logos').remove(filesToRemove)
-            console.log('✅ Ficheiros antigos removidos:', filesToRemove)
+            const { error: removeError, data: removeData } = await supabase.storage
+              .from('logos')
+              .remove(filesToRemove)
+            
+            if (removeError) {
+              console.error('❌ Erro ao remover ficheiros antigos:', removeError)
+              console.error('❌ Detalhes do erro:', JSON.stringify(removeError, null, 2))
+              
+              if (removeError.message.includes('permission') || 
+                  removeError.message.includes('403') || 
+                  removeError.message.includes('Forbidden') ||
+                  removeError.message.includes('row-level security') ||
+                  removeError.message.includes('RLS')) {
+                throw new Error('❌ ERRO DE PERMISSÃO: A política DELETE não está a funcionar corretamente.\n\n📋 VERIFIQUE:\n\n1. Vá ao Supabase Dashboard → Storage → Policies\n2. Verifique se existe uma política DELETE para o bucket "logos"\n3. A política deve ter:\n   - Policy name: "Allow deletes from logos"\n   - Allowed operation: DELETE\n   - Target roles: anon, authenticated (ambas marcadas)\n   - USING expression: bucket_id = \'logos\'\n\n⚠️ Se a política não existe ou está incorreta, crie/edite-a conforme acima.')
+              }
+              // Continuar - tentar fazer upload mesmo assim
+            } else {
+              console.log('✅ Ficheiros antigos removidos com sucesso:', filesToRemove)
+              console.log('📊 Dados da remoção:', removeData)
+              
+              // Verificar se foram realmente removidos
+              await new Promise(resolve => setTimeout(resolve, 1000))
+              
+              const { data: verifyFiles } = await supabase.storage
+                .from('logos')
+                .list('')
+              
+              const remainingLogos = verifyFiles?.filter((f: any) => 
+                f.name.toLowerCase().startsWith('logo.')
+              ) || []
+              
+              if (remainingLogos.length > 0) {
+                console.warn('⚠️ Ainda existem ficheiros logo após remoção:', remainingLogos.map((f: any) => f.name))
+              } else {
+                console.log('✅ Confirmação: Todos os ficheiros logo foram removidos')
+              }
+            }
+          } else {
+            console.log('ℹ️ Nenhum ficheiro logo encontrado para remover')
           }
+        } else {
+          console.log('ℹ️ Bucket está vazio, não há ficheiros para remover')
         }
       } catch (err) {
-        console.warn('⚠️ Não foi possível remover ficheiros antigos (continuando mesmo assim):', err)
-        // Continuar - o upsert: true deve substituir
+        console.error('❌ Erro ao tentar remover ficheiros antigos:', err)
+        if (err instanceof Error && err.message.includes('ERRO DE PERMISSÃO')) {
+          throw err // Re-lançar erros de permissão
+        }
+        console.warn('⚠️ Continuando mesmo assim para tentar fazer upload...')
       }
 
       // Fazer upload do novo ficheiro
       console.log('📤 A fazer upload do ficheiro:', fileName)
       console.log('📦 Tamanho do ficheiro:', file.size, 'bytes')
       
+      // Aguardar um pouco para garantir que qualquer remoção anterior foi processada
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('logos')
         .upload(fileName, file, {
-          cacheControl: '3600',
+          cacheControl: '0', // Sem cache para forçar refresh
           upsert: true // Substituir se já existir
         })
 
@@ -107,11 +181,51 @@ export default function AdminLogoPage() {
                    uploadError.message.includes('Unauthorized')) {
           throw new Error('Erro de autenticação. Verifique se as variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY estão configuradas corretamente no Vercel.')
         } else if (uploadError.message.includes('duplicate') || 
-                   uploadError.message.includes('already exists')) {
-          // Se já existe, tentar substituir
-          console.log('Ficheiro já existe, tentando substituir...')
-          // Já estamos a usar upsert: true, então isto não deveria acontecer
-          throw new Error('Ficheiro já existe. O sistema deveria substituir automaticamente. Se o erro persistir, tente remover o ficheiro antigo manualmente no Supabase.')
+                   uploadError.message.includes('already exists') ||
+                   uploadError.message.includes('The resource already exists')) {
+          // Se já existe, tentar remover e fazer upload novamente
+          console.log('⚠️ Ficheiro já existe, tentando remover e fazer upload novamente...')
+          try {
+            // Remover o ficheiro existente
+            const { error: removeError } = await supabase.storage
+              .from('logos')
+              .remove([fileName])
+            
+            if (removeError) {
+              console.warn('⚠️ Não foi possível remover ficheiro existente:', removeError)
+              throw new Error('Ficheiro já existe e não foi possível remover. Por favor, remova manualmente no Supabase Dashboard (Storage > logos) e tente novamente.')
+            }
+            
+            // Tentar fazer upload novamente após remover
+            console.log('🔄 A tentar fazer upload novamente após remover ficheiro antigo...')
+            const { data: retryUploadData, error: retryUploadError } = await supabase.storage
+              .from('logos')
+              .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: true
+              })
+            
+            if (retryUploadError) {
+              throw retryUploadError
+            }
+            
+            if (!retryUploadData) {
+              throw new Error('Upload falhou após remover ficheiro antigo')
+            }
+            
+            // Sucesso após retry
+            console.log('✅ Upload bem-sucedido após remover ficheiro antigo')
+            setSuccess(true)
+            setFile(null)
+            setPreview(null)
+            const fileInput = document.getElementById('logo-upload') as HTMLInputElement
+            if (fileInput) fileInput.value = ''
+            setTimeout(() => window.open('/', '_blank'), 2000)
+            setUploading(false)
+            return
+          } catch (retryErr) {
+            throw new Error(`Erro ao substituir logo: ${retryErr instanceof Error ? retryErr.message : 'Erro desconhecido'}\n\nTente remover o ficheiro antigo manualmente no Supabase Dashboard.`)
+          }
         } else {
           throw new Error(`Erro ao fazer upload: ${uploadError.message}\n\nVerifique:\n1. Se o bucket "logos" existe\n2. Se as políticas permitem INSERT\n3. Se as variáveis de ambiente estão configuradas`)
         }
@@ -131,10 +245,23 @@ export default function AdminLogoPage() {
         fileInput.value = ''
       }
 
+      // Disparar evento de storage para forçar refresh em outras abas
+      try {
+        localStorage.setItem('logo-updated', Date.now().toString())
+        localStorage.removeItem('logo-updated') // Remove imediatamente para não poluir
+      } catch (e) {
+        console.warn('Não foi possível disparar evento de storage:', e)
+      }
+      
       // Aguardar um pouco e recarregar a página principal para ver o logo atualizado
       setTimeout(() => {
-        // Abrir a página principal numa nova aba para verificar
-        window.open('/', '_blank')
+        // Forçar refresh da página principal se estiver aberta
+        if (window.opener) {
+          window.opener.location.reload()
+        }
+        // Abrir a página principal numa nova aba com cache bust para verificar
+        const timestamp = Date.now()
+        window.open(`/?logo-refresh=${timestamp}`, '_blank')
       }, 2000)
     } catch (err) {
       console.error('Erro ao fazer upload:', err)
@@ -173,11 +300,46 @@ export default function AdminLogoPage() {
                     <li>Clique em <strong>"Save policy"</strong></li>
                   </ul>
                 </li>
+                <li>Adicione também uma política para <strong>UPDATE</strong> (para substituir ficheiros):
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-xs text-clinica-text/80">
+                    <li>Clique em <strong>"New policy"</strong> novamente</li>
+                    <li>Configure:
+                      <div className="ml-4 mt-1 p-2 bg-clinica-accent/30 rounded text-xs font-mono">
+                        <div>Policy name: <strong>"Allow updates to logos"</strong></div>
+                        <div>Allowed operation: <strong>UPDATE</strong></div>
+                        <div>Target roles: <strong>anon, authenticated</strong> (marque ambas)</div>
+                        <div>USING expression: <code className="bg-clinica-accent px-1 rounded">bucket_id = 'logos'</code></div>
+                        <div>WITH CHECK expression: <code className="bg-clinica-accent px-1 rounded">bucket_id = 'logos'</code></div>
+                      </div>
+                    </li>
+                    <li>Clique em <strong>"Save policy"</strong></li>
+                  </ul>
+                </li>
+                <li>Adicione também uma política para <strong>DELETE</strong> (para remover ficheiros antigos):
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-xs text-clinica-text/80">
+                    <li>Clique em <strong>"New policy"</strong> novamente</li>
+                    <li>Configure:
+                      <div className="ml-4 mt-1 p-2 bg-clinica-accent/30 rounded text-xs font-mono">
+                        <div>Policy name: <strong>"Allow deletes from logos"</strong></div>
+                        <div>Allowed operation: <strong>DELETE</strong></div>
+                        <div>Target roles: <strong>anon, authenticated</strong> (marque ambas)</div>
+                        <div>USING expression: <code className="bg-clinica-accent px-1 rounded">bucket_id = 'logos'</code></div>
+                      </div>
+                    </li>
+                    <li>Clique em <strong>"Save policy"</strong></li>
+                  </ul>
+                </li>
                 <li>Verifique se já existe uma política <strong>SELECT</strong> para leitura (anon, authenticated)</li>
                 <li>Tente fazer upload novamente abaixo</li>
               </ol>
               <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded text-xs text-red-200">
-                ⚠️ <strong>Problema comum:</strong> A política INSERT pode estar muito restritiva (só permite JPG numa pasta específica). Crie uma nova política INSERT simples como descrito acima.
+                ⚠️ <strong>Importante:</strong> Para poder substituir o logo, precisa de 3 políticas:
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li><strong>INSERT</strong> - para fazer upload</li>
+                  <li><strong>UPDATE</strong> - para substituir ficheiros existentes</li>
+                  <li><strong>DELETE</strong> - para remover ficheiros antigos</li>
+                </ul>
+                Se só tiver INSERT, não conseguirá substituir o logo quando fizer upload novamente.
               </div>
             </div>
 
