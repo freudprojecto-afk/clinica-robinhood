@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe, Navigation2, ExternalLink } from 'lucide-react'
+import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe, Navigation2, ExternalLink, Facebook, Instagram, Youtube } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Profissional {
@@ -1352,8 +1352,8 @@ export default function Home() {
             allow="autoplay; encrypted-media"
             allowFullScreen
             style={{
-              opacity: 0.7, // Esbatido (70% de opacidade - aumentado para mais visibilidade)
-              filter: 'brightness(0.95) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
+              opacity: 0.5, // Esbatido (50% de opacidade - aumentado para mais visibilidade)
+              filter: 'brightness(0.85) contrast(1.1)', // Mais brilho e contraste para melhor visibilidade
               pointerEvents: 'none', // Não interferir com cliques
             }}
           />
@@ -1608,7 +1608,7 @@ export default function Home() {
                 Tratamento de{' '}
                 <span className="text-clinica-cta">Burnout</span>,{' '}
                 <span className="text-clinica-cta">Ansiedade</span>,{' '}
-                <span className="text-clinica-cta">Bullying</span> , Problemas Relacionais e outros...
+                <span className="text-clinica-cta">Bullying</span> e Problemas Relacionais e outros...
               </h1>
 
               {/* Botão Agendar Consulta - Estilo Robinhood */}
@@ -1902,13 +1902,185 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-clinica-primary border-t border-clinica-menu py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-clinica-bg">© {new Date().getFullYear()} Clínica Freud. Todos os direitos reservados.</p>
+      <footer className="bg-clinica-primary border-t border-clinica-menu py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+            {/* Páginas */}
+            <div>
+              <h3 className="text-xl font-bold text-clinica-bg mb-4">Páginas</h3>
+              <ul className="space-y-2">
+                <li>
+                  <button onClick={() => scrollParaSecao('home')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+                    Home
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => scrollParaSecao('servicos')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+                    Serviços
+                  </button>
+                </li>
+                <li>
+                  <a href="#little-freud" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
+                    Little Freud
+                  </a>
+                </li>
+                <li>
+                  <button onClick={() => scrollParaSecao('corpo-clinico')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+                    Corpo Clínico
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => scrollParaSecao('depoimentos')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+                    Depoimentos
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => scrollParaSecao('blog')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+                    Blog
+                  </button>
+                </li>
+                <li>
+                  <a href="#publicacoes" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
+                    Publicações
+                  </a>
+                </li>
+                <li>
+                  <button onClick={() => scrollParaSecao('faq')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+                    FAQ
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <h3 className="text-xl font-bold text-clinica-bg mb-4">Contacto</h3>
+              <ul className="space-y-3">
+                <li className="flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-clinica-bg/80" />
+                  <a href="tel:+351916649284" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
+                    +351 916 649 284
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-clinica-bg/80" />
+                  <a href="https://wa.me/351916649284" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
+                    +351 916 649 284
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-clinica-bg/80" />
+                  <a href="mailto:consulta@clinicafreud.pt" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
+                    consulta@clinicafreud.pt
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-clinica-bg/80" />
+                  <a href="mailto:direcao@clinicafreud.pt" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
+                    direcao@clinicafreud.pt
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Localização */}
+            <div>
+              <h3 className="text-xl font-bold text-clinica-bg mb-4">Localização</h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-2">
+                  <MapPin className="w-5 h-5 text-clinica-bg/80 mt-1 flex-shrink-0" />
+                  <span className="text-clinica-bg/80">
+                    Avenida 5 de Outubro, 122, 8º Esq., 1050-061 Lisboa
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Clock className="w-5 h-5 text-clinica-bg/80 mt-1 flex-shrink-0" />
+                  <span className="text-clinica-bg/80">
+                    De segunda a sábado, entre as 08-21h (contacte-nos para saber os horários vagos)
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Transportes e Estacionamento */}
+            <div>
+              <h3 className="text-xl font-bold text-clinica-bg mb-4">Transportes</h3>
+              <ul className="space-y-3 text-clinica-bg/80 text-sm">
+                <li>
+                  <strong className="text-clinica-bg">Metro:</strong> Campo Pequeno (linha amarela) e São Sebastião (linha azul)
+                </li>
+                <li>
+                  <strong className="text-clinica-bg">Autocarro:</strong> 207, 701, 727, 732, 736, 738, 744, 749, 754, 783
+                </li>
+                <li>
+                  <strong className="text-clinica-bg">Comboio:</strong> Estação de Entrecampos
+                </li>
+              </ul>
+              <h3 className="text-xl font-bold text-clinica-bg mb-4 mt-6">Estacionamento</h3>
+              <ul className="space-y-2 text-clinica-bg/80 text-sm">
+                <li>Parking (Av. 5 de Outubro 209)</li>
+                <li>Autocentro (Av. 5 de Outubro 75)</li>
+                <li>Barbosa du Bocage (Barbosa du Bocage 85)</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Secção Inferior - Mensagem e Redes Sociais */}
+          <div className="border-t border-clinica-menu/30 pt-8 mt-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <p className="text-clinica-bg/90 mb-4">
+                  Se tem dúvidas sobre qual o profissional escolher, nós podemos orientá-lo.
+                </p>
+                <button 
+                  onClick={() => scrollParaSecao('contactos')}
+                  className="bg-clinica-cta text-clinica-text px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-all shadow-lg hover:shadow-xl"
+                >
+                  Fale connosco
+                </button>
+              </div>
+              
+              {/* Redes Sociais */}
+              <div className="flex items-center gap-4">
+                <a
+                  href="https://www.facebook.com/profile.php?id=61575649983080"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 rounded-full bg-clinica-bg/20 hover:bg-clinica-bg/30 flex items-center justify-center transition-all hover:scale-110"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="w-6 h-6 text-clinica-bg" />
+                </a>
+                <a
+                  href="https://www.instagram.com/clinicafreud/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 rounded-full bg-clinica-bg/20 hover:bg-clinica-bg/30 flex items-center justify-center transition-all hover:scale-110"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="w-6 h-6 text-clinica-bg" />
+                </a>
+                <a
+                  href="https://www.youtube.com/@Cl%C3%ADnicaFreud"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 rounded-full bg-clinica-bg/20 hover:bg-clinica-bg/30 flex items-center justify-center transition-all hover:scale-110"
+                  aria-label="YouTube"
+                >
+                  <Youtube className="w-6 h-6 text-clinica-bg" />
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="border-t border-clinica-menu/30 pt-6 mt-6 text-center">
+            <p className="text-clinica-bg/80">
+              © {new Date().getFullYear()} Clínica Freud. Todos os direitos reservados.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
   )
 }
-
-
