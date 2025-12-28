@@ -1314,9 +1314,16 @@ export default function Home() {
 
   // Fechar dropdowns ao clicar fora
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       const target = event.target as HTMLElement
-      if (!target.closest('.menu-dropdown') && !target.closest('.idioma-dropdown')) {
+      // Não fechar se clicar dentro do menu mobile ou nos botões do menu
+      if (
+        !target.closest('.menu-dropdown') && 
+        !target.closest('.idioma-dropdown') &&
+        !target.closest('[class*="md:hidden"]') &&
+        !target.closest('button') &&
+        !target.closest('a')
+      ) {
         setMenuAberto(false)
         setIdiomaAberto(false)
       }
@@ -1324,7 +1331,11 @@ export default function Home() {
 
     if (menuAberto || idiomaAberto) {
       document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('touchstart', handleClickOutside)
+      }
     }
   }, [menuAberto, idiomaAberto])
 
@@ -1502,6 +1513,8 @@ export default function Home() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 className="md:hidden mt-4 pb-4 border-t border-clinica-accent/20 pt-4"
+                onClick={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
               >
                 {/* Menu "O que oferecemos?" Mobile */}
                 <div className="mb-4">
@@ -1515,8 +1528,18 @@ export default function Home() {
                     {seccoes.map((seccao) => (
                       <button
                         key={seccao.id}
-                        onClick={() => scrollParaSecao(seccao.id)}
-                        className="block w-full text-left px-3 py-2 text-sm text-clinica-text hover:bg-clinica-accent hover:text-clinica-primary rounded transition-colors"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          scrollParaSecao(seccao.id)
+                        }}
+                        onTouchStart={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          scrollParaSecao(seccao.id)
+                        }}
+                        className="block w-full text-left px-3 py-2 text-sm text-clinica-text hover:bg-clinica-accent hover:text-clinica-primary active:bg-clinica-accent rounded transition-colors touch-manipulation"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
                       >
                         {seccao.nome}
                       </button>
