@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, ChevronDown, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe } from 'lucide-react'
+import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Profissional {
@@ -39,6 +39,13 @@ interface AboutFeature {
   description: string
   icon_name?: string  // Nome do ícone do Lucide React
   icon_url?: string  // URL de imagem alternativa
+  order?: number
+}
+
+interface FAQ {
+  id: string
+  question: string
+  answer: string
   order?: number
 }
 
@@ -710,6 +717,144 @@ function DepoimentosSection() {
               Nenhum depoimento encontrado.
             </p>
           </motion.div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+// Componente da secção FAQ
+function FAQSection() {
+  const [faqs, setFaqs] = useState<FAQ[]>([])
+  const [loading, setLoading] = useState(true)
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    async function fetchFAQs() {
+      try {
+        setLoading(true)
+        console.log('🔍 A buscar FAQs do Supabase...')
+        const { data, error } = await supabase
+          .from('faqs')
+          .select('*')
+          .order('order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: true })
+
+        if (error) {
+          if (error.message.includes('does not exist') || error.message.includes('relation')) {
+            console.warn('⚠️ Tabela "faqs" não existe ainda. Usando FAQs padrão.')
+            setFaqs([
+              { id: '1', question: 'Como posso agendar uma consulta?', answer: 'Pode agendar através do nosso site, por telefone ou email.', order: 1 },
+              { id: '2', question: 'Aceitam seguros de saúde?', answer: 'Sim, aceitamos a maioria dos seguros de saúde nacionais.', order: 2 },
+              { id: '3', question: 'Qual a duração de uma sessão?', answer: 'As sessões têm normalmente a duração de 50 minutos.', order: 3 },
+              { id: '4', question: 'As consultas são confidenciais?', answer: 'Sim, garantimos total confidencialidade e sigilo profissional.', order: 4 },
+            ])
+            setLoading(false)
+            return
+          }
+          throw error
+        }
+
+        if (data && data.length > 0) {
+          console.log(`✅ ${data.length} FAQs encontrados:`, data)
+          setFaqs(data)
+        } else {
+          console.warn('⚠️ Nenhum FAQ encontrado')
+          setFaqs([
+            { id: '1', question: 'Como posso agendar uma consulta?', answer: 'Pode agendar através do nosso site, por telefone ou email.', order: 1 },
+            { id: '2', question: 'Aceitam seguros de saúde?', answer: 'Sim, aceitamos a maioria dos seguros de saúde nacionais.', order: 2 },
+            { id: '3', question: 'Qual a duração de uma sessão?', answer: 'As sessões têm normalmente a duração de 50 minutos.', order: 3 },
+            { id: '4', question: 'As consultas são confidenciais?', answer: 'Sim, garantimos total confidencialidade e sigilo profissional.', order: 4 },
+          ])
+        }
+      } catch (err) {
+        console.error('❌ Erro ao buscar FAQs:', err)
+        setFaqs([
+          { id: '1', question: 'Como posso agendar uma consulta?', answer: 'Pode agendar através do nosso site, por telefone ou email.', order: 1 },
+          { id: '2', question: 'Aceitam seguros de saúde?', answer: 'Sim, aceitamos a maioria dos seguros de saúde nacionais.', order: 2 },
+          { id: '3', question: 'Qual a duração de uma sessão?', answer: 'As sessões têm normalmente a duração de 50 minutos.', order: 3 },
+          { id: '4', question: 'As consultas são confidenciais?', answer: 'Sim, garantimos total confidencialidade e sigilo profissional.', order: 4 },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFAQs()
+  }, [])
+
+  const toggleFAQ = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index)
+  }
+
+  return (
+    <section id="faq" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Perguntas Frequentes</h2>
+          <p className="text-lg text-clinica-text">Respostas às questões mais comuns</p>
+        </motion.div>
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-clinica-text opacity-70">A carregar...</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {faqs.map((faq, index) => (
+              <motion.div
+                key={faq.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+                className="bg-clinica-accent border border-clinica-primary rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all"
+              >
+                <button
+                  onClick={() => toggleFAQ(index)}
+                  className="w-full flex items-center justify-between p-6 text-left hover:bg-clinica-primary/5 transition-colors"
+                >
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-clinica-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <HelpCircle className="w-5 h-5 text-clinica-primary" />
+                    </div>
+                    <h3 className="text-lg md:text-xl font-bold text-clinica-text pr-4">
+                      {faq.question}
+                    </h3>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {openIndex === index ? (
+                      <ChevronUp className="w-6 h-6 text-clinica-primary transition-transform" />
+                    ) : (
+                      <ChevronDown className="w-6 h-6 text-clinica-primary transition-transform" />
+                    )}
+                  </div>
+                </button>
+                {openIndex === index && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-6 pb-6 pt-0">
+                      <div className="pl-14 border-l-2 border-clinica-primary/30">
+                        <p className="text-clinica-text leading-relaxed text-base md:text-lg">
+                          {faq.answer}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            ))}
+          </div>
         )}
       </div>
     </section>
@@ -1412,45 +1557,7 @@ export default function Home() {
       </section>
 
       {/* 8. FAQ */}
-      <section id="faq" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Perguntas Frequentes</h2>
-            <p className="text-lg text-clinica-text">Respostas às questões mais comuns</p>
-          </motion.div>
-          <div className="space-y-4">
-            {[
-              { pergunta: 'Como posso agendar uma consulta?', resposta: 'Pode agendar através do nosso site, por telefone ou email.' },
-              { pergunta: 'Aceitam seguros de saúde?', resposta: 'Sim, aceitamos a maioria dos seguros de saúde nacionais.' },
-              { pergunta: 'Qual a duração de uma sessão?', resposta: 'As sessões têm normalmente a duração de 50 minutos.' },
-              { pergunta: 'As consultas são confidenciais?', resposta: 'Sim, garantimos total confidencialidade e sigilo profissional.' },
-            ].map((faq, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 shadow-md"
-              >
-                <div className="flex items-start gap-4">
-                  <HelpCircle className="w-6 h-6 text-clinica-primary flex-shrink-0 mt-1" />
-                  <div>
-                    <h3 className="text-lg font-bold mb-2 text-clinica-text">{faq.pergunta}</h3>
-                    <p className="text-clinica-text">{faq.resposta}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <FAQSection />
 
       {/* 9. COMPROMISSO ÉTICO */}
       <section id="compromisso-etico" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
