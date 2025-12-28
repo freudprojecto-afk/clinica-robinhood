@@ -1620,7 +1620,7 @@ export default function Home() {
                 transition={{ duration: 0.8, delay: 0.6 }}
                 className="pt-8"
               >
-                <button className="bg-clinica-primary text-clinica-bg px-10 py-5 rounded-full font-bold text-lg sm:text-xl hover:bg-opacity-90 transition-all shadow-2xl hover:shadow-3xl hover:scale-105 active:scale-95">
+                <button className="bg-clinica-cta text-clinica-text px-10 py-5 rounded-full font-bold text-lg sm:text-xl hover:bg-opacity-90 transition-all shadow-2xl hover:shadow-3xl hover:scale-105 active:scale-95">
                   Agendar Consulta
                 </button>
               </motion.div>
