@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe } from 'lucide-react'
+import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe, Navigation2, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Profissional {
@@ -1804,16 +1804,32 @@ export default function Home() {
             <p className="text-clinica-text font-medium mb-4">Segunda a Sexta: 9h - 19h</p>
             <p className="text-clinica-text font-medium mb-4">Sábado: 9h - 13h</p>
             <div className="mt-6 pt-6 border-t border-clinica-primary/20">
-              <MapPin className="w-10 h-10 text-clinica-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2 text-clinica-text">Morada</h3>
-              <a
-                href="https://maps.app.goo.gl/MMgb3FuxSeLLemSA6"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-clinica-primary font-medium hover:text-clinica-menu hover:underline transition-colors inline-block"
-              >
-                Avenida 5 de Outubro, 122, 8º Esq., 1050-061 Lisboa
-              </a>
+              <div className="text-left">
+                <h4 className="text-2xl font-bold mb-2 text-clinica-text">Clínica Freud</h4>
+                <p className="text-clinica-text font-medium mb-4">
+                  Avenida 5 de Outubro, 122, 8º Esq., 1050-061 Lisboa
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <a
+                    href="https://maps.app.goo.gl/MMgb3FuxSeLLemSA6"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-clinica-primary text-white rounded-lg hover:bg-clinica-menu transition-colors font-medium"
+                  >
+                    <Navigation2 className="w-5 h-5" />
+                    Direções
+                  </a>
+                  <a
+                    href="https://maps.app.goo.gl/MMgb3FuxSeLLemSA6"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-clinica-primary text-clinica-primary rounded-lg hover:bg-clinica-primary/10 transition-colors font-medium"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Ver mapa maior
+                  </a>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
