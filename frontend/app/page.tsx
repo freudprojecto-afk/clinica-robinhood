@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe, Navigation2, ExternalLink, Facebook, Instagram, Youtube } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../lib/supabase'
+import Logo from '../components/Logo'
 
 interface Profissional {
   id: number
@@ -1366,36 +1367,13 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               {/* Logo Clínica Freud */}
-              <motion.a
-                href="#home"
+              <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
-                className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
-                onClick={() => scrollParaSecao('home')}
               >
-                {/* Logo - Design baseado na imagem */}
-                <div className="flex items-center gap-4">
-                  {/* Parte principal do logo */}
-                  <div className="flex flex-col">
-                    {/* "CLÍNICA" - pequeno, maiúsculas, fino */}
-                    <span className="text-[10px] sm:text-xs font-light uppercase tracking-wider text-clinica-text leading-none">
-                      CLÍNICA
-                    </span>
-                    {/* "Freud" - grande, minúsculas, negrito, com f e d altos */}
-                    <span className="text-3xl sm:text-4xl md:text-5xl font-bold lowercase text-clinica-text leading-none mt-[-2px]">
-                      Freud
-                    </span>
-                  </div>
-                  
-                  {/* Texto vertical à direita */}
-                  <div className="hidden sm:flex flex-col justify-center gap-1 text-clinica-text/60 text-xs font-light lowercase">
-                    <span>psicoterapia</span>
-                    <span>psiquiatria</span>
-                    <span>psicologia</span>
-                  </div>
-                </div>
-              </motion.a>
+                <Logo onClick={() => scrollParaSecao('home')} />
+              </motion.div>
 
               {/* Menu Desktop - Centro */}
               <nav className="hidden md:flex items-center gap-6">
