@@ -1502,7 +1502,7 @@ export default function Home() {
                 className="flex items-center gap-2 bg-clinica-cta text-clinica-text px-3 py-2 sm:px-6 sm:py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-opacity-90 transition-all shadow-lg hover:shadow-xl hover:scale-105"
               >
                 <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Ligue-nos</span>
+                <span>Ligue-nos</span>
               </motion.a>
             </div>
 
