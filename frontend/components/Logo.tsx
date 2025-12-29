@@ -127,8 +127,7 @@ export default function Logo({ onClick }: LogoProps) {
       className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
     >
       {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header */}
-      <div className={`relative w-36 sm:w-44 md:w-52 rounded-xl flex items-center justify-center overflow-hidden ${logoUrl ? 'bg-white h-10 sm:h-12 md:h-12' : 'bg-clinica-bg/95 backdrop-blur-sm shadow-sm h-10 sm:h-12 md:h-12'}`}>        {loading ? (
-          // Placeholder enquanto carrega
+     <div className="relative w-36 sm:w-44 md:w-52 rounded-xl flex items-center justify-center overflow-hidden bg-clinica-bg/95 backdrop-blur-sm h-10 sm:h-12 md:h-12">          // Placeholder enquanto carrega
           <div className="flex flex-col items-center justify-center">
             <span className="text-[10px] sm:text-xs font-light uppercase tracking-wider text-clinica-text/60">
               CLÍNICA
