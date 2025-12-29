@@ -127,32 +127,33 @@ export default function Logo({ onClick }: LogoProps) {
       className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
     >
       {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header */}
-     <div className="relative w-36 sm:w-44 md:w-52 rounded-xl flex items-center justify-center overflow-hidden bg-clinica-bg/95 backdrop-blur-sm h-10 sm:h-12 md:h-12">          // Placeholder enquanto carrega
+           {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header sempre */}
+      <div className="relative w-36 sm:w-44 md:w-52 rounded-xl flex items-center justify-center overflow-hidden bg-clinica-bg/95 backdrop-blur-sm h-10 sm:h-12 md:h-12">
+        {loading ? (
+          // Placeholder enquanto carrega
           <div className="flex flex-col items-center justify-center">
-            <span className="text-[10px] sm:text-xs font-light uppercase tracking-wider text-clinica-text/60">
+            <span className="text-[8px] sm:text-[9px] font-light uppercase tracking-wider text-clinica-text/60 leading-none">
               CLÍNICA
             </span>
-            <span className="text-xl sm:text-2xl md:text-3xl font-bold lowercase text-clinica-text">
+            <span className="text-sm sm:text-base md:text-lg font-bold lowercase text-clinica-text leading-none">
               Freud
             </span>
           </div>
         ) : logoUrl ? (
           // Logo carregado do Supabase
           <img
-            key={`${logoUrl}-${refreshKey}`} // Key única com refreshKey para forçar re-render
+            key={`${logoUrl}-${refreshKey}`}
             src={logoUrl}
             alt="Clínica Freud Logo"
-            className="w-full h-full object-contain"
-            loading="eager" // Carregar imediatamente, sem lazy loading
+            className="w-auto h-full max-h-full object-contain"
+            loading="eager"
             style={{ 
-              padding: '0.5rem',
               objectFit: 'contain',
-              width: '100%',
               height: '100%',
+              width: 'auto',
               filter: 'contrast(1.05) brightness(1.02)'
             }}
             onError={(e) => {
-              // Se a imagem falhar, mostrar placeholder
               console.error('❌ Erro ao carregar imagem do logo:', e)
               setLogoUrl(null)
             }}
@@ -163,21 +164,17 @@ export default function Logo({ onClick }: LogoProps) {
         ) : (
           // Logo padrão (texto) se não houver imagem
           <div className="flex flex-col items-center justify-center px-4">
-            <span className="text-[10px] sm:text-xs font-light uppercase tracking-wider text-clinica-text leading-none">
+            <span className="text-[8px] sm:text-[9px] font-light uppercase tracking-wider text-clinica-text leading-none">
               CLÍNICA
             </span>
-            <span className="text-xl sm:text-2xl md:text-3xl font-bold lowercase text-clinica-text leading-none mt-[-2px]">
+            <span className="text-sm sm:text-base md:text-lg font-bold lowercase text-clinica-text leading-none">
               Freud
             </span>
             {/* Texto vertical à direita */}
-            <div className="hidden sm:flex flex-col justify-center gap-0.5 text-clinica-text/60 text-[8px] sm:text-[9px] font-light lowercase absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="hidden sm:flex flex-col justify-center gap-0.5 text-clinica-text/60 text-[7px] sm:text-[8px] font-light lowercase absolute right-2 top-1/2 -translate-y-1/2">
               <span>psicoterapia</span>
               <span>psiquiatria</span>
               <span>psicologia</span>
             </div>
           </div>
         )}
-      </div>
-    </div>
-  )
-}
