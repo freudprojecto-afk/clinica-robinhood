@@ -1,4 +1,4 @@
-'use client'
+use client'
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -151,7 +151,6 @@ export default function Logo({ onClick }: LogoProps) {
               objectFit: 'contain',
               width: '100%',
               height: '100%',
-              imageRendering: 'high-quality',
               filter: 'contrast(1.05) brightness(1.02)'
             }}
             onError={(e) => {
