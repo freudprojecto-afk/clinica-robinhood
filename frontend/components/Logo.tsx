@@ -10,9 +10,12 @@ interface LogoProps {
 export default function Logo({ onClick }: LogoProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshKey, setRefreshKey] = useState(0) // Para forçar refresh
+  const [lastFileTimestamp, setLastFileTimestamp] = useState<string | null>(null)
 
   useEffect(() => {
+    let isMounted = true
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
     async function fetchLogo() {
       try {
         console.log('🔍 A buscar logo do Supabase...')
@@ -29,15 +32,15 @@ export default function Logo({ onClick }: LogoProps) {
           // Se o bucket não existir, usar logo padrão
           if (error.message.includes('not found') || error.message.includes('does not exist') || error.message.includes('Bucket')) {
             console.log('⚠️ Bucket "logos" não existe ainda. Usando logo padrão.')
-            setLogoUrl(null)
-            setLoading(false)
+            if (isMounted) {
+              setLogoUrl(null)
+              setLoading(false)
+            }
             return
           }
           console.error('❌ Erro ao listar ficheiros:', error)
           throw error
         }
-
-        console.log('📋 Ficheiros encontrados:', data?.map(f => f.name) || [])
 
         if (data && data.length > 0) {
           // Procurar por ficheiro que começa com "logo"
@@ -46,9 +49,19 @@ export default function Logo({ onClick }: LogoProps) {
           )
 
           if (logoFile) {
+            // Verificar se o ficheiro mudou comparando timestamps
+            const currentTimestamp = logoFile.updated_at || logoFile.created_at || ''
+            
+            // Só atualizar se o timestamp mudou
+            if (currentTimestamp === lastFileTimestamp && logoUrl) {
+              console.log('ℹ️ Logo não mudou, mantendo cache')
+              if (isMounted) {
+                setLoading(false)
+              }
+              return
+            }
+
             console.log('✅ Logo encontrado:', logoFile.name)
-            console.log('📅 Data de criação:', logoFile.created_at)
-            console.log('📅 Última modificação:', logoFile.updated_at || logoFile.created_at)
             
             // Obter URL pública do logo
             const { data: urlData } = supabase.storage
@@ -56,70 +69,96 @@ export default function Logo({ onClick }: LogoProps) {
               .getPublicUrl(logoFile.name)
 
             if (urlData?.publicUrl) {
-              // Adicionar timestamp e versão baseada na data de modificação para forçar refresh
-              const fileTimestamp = logoFile.updated_at || logoFile.created_at || Date.now()
-              const timestamp = new Date(fileTimestamp).getTime()
-              const urlWithCacheBuster = `${urlData.publicUrl}?v=${timestamp}&t=${Date.now()}`
+              // Usar apenas o timestamp do ficheiro para cache busting (sem Date.now() que muda sempre)
+              const fileTimestamp = new Date(currentTimestamp).getTime()
+              const urlWithCacheBuster = `${urlData.publicUrl}?v=${fileTimestamp}`
               
               console.log('🔗 URL do logo:', urlWithCacheBuster)
-              setLogoUrl(urlWithCacheBuster)
+              if (isMounted) {
+                setLogoUrl(urlWithCacheBuster)
+                setLastFileTimestamp(currentTimestamp)
+              }
             } else {
               console.warn('⚠️ URL pública não disponível')
-              setLogoUrl(null)
+              if (isMounted) {
+                setLogoUrl(null)
+              }
             }
           } else {
             console.log('⚠️ Nenhum ficheiro "logo.*" encontrado. Usando logo padrão.')
-            setLogoUrl(null)
+            if (isMounted) {
+              setLogoUrl(null)
+              setLastFileTimestamp(null)
+            }
           }
         } else {
           console.log('⚠️ Bucket "logos" está vazio. Usando logo padrão.')
-          setLogoUrl(null)
+          if (isMounted) {
+            setLogoUrl(null)
+            setLastFileTimestamp(null)
+          }
         }
       } catch (err) {
         console.error('❌ Erro ao buscar logo:', err)
-        setLogoUrl(null)
+        if (isMounted) {
+          setLogoUrl(null)
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
+    // Carregar logo inicial
     fetchLogo()
     
-    // Recarregar logo a cada 3 segundos (para atualizar quando houver novo upload)
-    const interval = setInterval(() => {
-      console.log('🔄 A recarregar logo...')
-      fetchLogo()
-    }, 3000)
+    // Verificar mudanças apenas a cada 30 segundos (em vez de 3 segundos)
+    intervalId = setInterval(() => {
+      if (isMounted) {
+        fetchLogo()
+      }
+    }, 30000)
     
     // Listener para eventos de storage (quando há novo upload noutra aba)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'logo-updated') {
+      if (e.key === 'logo-updated' && isMounted) {
         console.log('📦 Evento de storage detectado (logo atualizado), a recarregar logo...')
-        setRefreshKey(prev => prev + 1)
+        setLastFileTimestamp(null) // Forçar verificação
         fetchLogo()
       }
     }
     
-    // Verificar se há parâmetro de refresh na URL
+    // Verificar se há parâmetro de refresh na URL (apenas uma vez no carregamento)
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.has('logo-refresh')) {
       console.log('🔄 Parâmetro logo-refresh na URL, a forçar refresh...')
-      setRefreshKey(prev => prev + 1)
+      setLastFileTimestamp(null) // Forçar verificação
+      fetchLogo()
     }
     
     window.addEventListener('storage', handleStorageChange)
-    // Também verificar quando a página ganha foco (pode ter sido atualizada noutra aba)
+    // Verificar quando a página ganha foco (apenas se passou algum tempo)
+    let lastFocusCheck = Date.now()
     window.addEventListener('focus', () => {
-      console.log('👁️ Página ganhou foco, a verificar logo...')
-      fetchLogo()
+      const now = Date.now()
+      // Só verificar se passou pelo menos 5 segundos desde a última verificação
+      if (now - lastFocusCheck > 5000 && isMounted) {
+        console.log('👁️ Página ganhou foco, a verificar logo...')
+        lastFocusCheck = now
+        fetchLogo()
+      }
     })
     
     return () => {
-      clearInterval(interval)
+      isMounted = false
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('focus', fetchLogo)
     }
-  }, [refreshKey])
+  }, []) // Sem dependências - só executa uma vez no mount
 
   return (
     <div
@@ -142,7 +181,7 @@ export default function Logo({ onClick }: LogoProps) {
           // Logo carregado do Supabase - com fundo igual ao header para ocultar transparência
           <div className="relative h-full inline-flex items-center justify-center" style={{ backgroundColor: 'rgba(242, 242, 240, 0.95)', backdropFilter: 'blur(4px)' }}>
             <img
-              key={`${logoUrl}-${refreshKey}`} // Key única com refreshKey para forçar re-render
+              key={logoUrl} // Key baseada apenas na URL (sem refreshKey que muda constantemente)
               src={logoUrl}
               alt="Clínica Freud Logo"
               className="w-auto h-full max-h-full object-contain"
