@@ -126,8 +126,8 @@ export default function Logo({ onClick }: LogoProps) {
       onClick={onClick}
       className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
     >
-      {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header sempre */}
-      <div className="relative w-36 sm:w-44 md:w-52 rounded-xl flex items-center justify-center overflow-hidden bg-clinica-bg/95 backdrop-blur-sm h-10 sm:h-12 md:h-12">
+      {/* Container do logo - completamente integrado no header, sem retângulo visível */}
+      <div className="relative flex items-center justify-center h-10 sm:h-12 md:h-12">
         {loading ? (
           // Placeholder enquanto carrega
           <div className="flex flex-col items-center justify-center">
@@ -139,19 +139,21 @@ export default function Logo({ onClick }: LogoProps) {
             </span>
           </div>
         ) : logoUrl ? (
-          // Logo carregado do Supabase
-          <img
-            key={`${logoUrl}-${refreshKey}`} // Key única com refreshKey para forçar re-render
-            src={logoUrl}
-            alt="Clínica Freud Logo"
-            className="w-auto h-full max-h-full object-contain"
-            loading="eager" // Carregar imediatamente, sem lazy loading
-            style={{ 
-              objectFit: 'contain',
-              height: '100%',
-              width: 'auto',
-              filter: 'contrast(1.05) brightness(1.02)'
-            }}
+          // Logo carregado do Supabase - com fundo igual ao header para ocultar transparência
+          <div className="relative h-full inline-flex items-center justify-center" style={{ backgroundColor: 'rgba(242, 242, 240, 0.95)', backdropFilter: 'blur(4px)' }}>
+            <img
+              key={`${logoUrl}-${refreshKey}`} // Key única com refreshKey para forçar re-render
+              src={logoUrl}
+              alt="Clínica Freud Logo"
+              className="w-auto h-full max-h-full object-contain"
+              loading="eager" // Carregar imediatamente, sem lazy loading
+              style={{ 
+                objectFit: 'contain',
+                height: '100%',
+                width: 'auto',
+                filter: 'contrast(1.05) brightness(1.02)',
+                display: 'block'
+              }}
             onError={(e) => {
               // Se a imagem falhar, mostrar placeholder
               console.error('❌ Erro ao carregar imagem do logo:', e)
@@ -160,7 +162,8 @@ export default function Logo({ onClick }: LogoProps) {
             onLoad={() => {
               console.log('✅ Logo carregado com sucesso')
             }}
-          />
+            />
+          </div>
         ) : (
           // Logo padrão (texto) se não houver imagem
           <div className="flex flex-col items-center justify-center px-4">
