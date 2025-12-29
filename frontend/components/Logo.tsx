@@ -126,8 +126,8 @@ export default function Logo({ onClick }: LogoProps) {
       onClick={onClick}
       className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
     >
-      {/* Retângulo arredondado para o logo - SEM BORDA */}
-      <div className="relative w-32 h-20 sm:w-40 sm:h-24 md:w-48 md:h-28 rounded-xl bg-clinica-bg flex items-center justify-center overflow-hidden">
+      {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header */}
+      <div className="relative w-36 h-24 sm:w-44 sm:h-28 md:w-52 md:h-32 rounded-xl bg-clinica-bg/95 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-sm">
         {loading ? (
           // Placeholder enquanto carrega
           <div className="flex flex-col items-center justify-center">
@@ -144,8 +144,16 @@ export default function Logo({ onClick }: LogoProps) {
             key={`${logoUrl}-${refreshKey}`} // Key única com refreshKey para forçar re-render
             src={logoUrl}
             alt="Clínica Freud Logo"
-            className="w-full h-full object-contain p-2"
+            className="w-full h-full object-contain"
             loading="eager" // Carregar imediatamente, sem lazy loading
+            style={{ 
+              padding: '0.5rem',
+              objectFit: 'contain',
+              width: '100%',
+              height: '100%',
+              imageRendering: 'high-quality',
+              filter: 'contrast(1.05) brightness(1.02)'
+            }}
             onError={(e) => {
               // Se a imagem falhar, mostrar placeholder
               console.error('❌ Erro ao carregar imagem do logo:', e)
