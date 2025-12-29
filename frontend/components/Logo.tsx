@@ -126,8 +126,7 @@ export default function Logo({ onClick }: LogoProps) {
       onClick={onClick}
       className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer"
     >
-      {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header */}
-           {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header sempre */}
+      {/* Retângulo arredondado para o logo - SEM BORDA - Fundo igual ao header sempre */}
       <div className="relative w-36 sm:w-44 md:w-52 rounded-xl flex items-center justify-center overflow-hidden bg-clinica-bg/95 backdrop-blur-sm h-10 sm:h-12 md:h-12">
         {loading ? (
           // Placeholder enquanto carrega
@@ -142,11 +141,11 @@ export default function Logo({ onClick }: LogoProps) {
         ) : logoUrl ? (
           // Logo carregado do Supabase
           <img
-            key={`${logoUrl}-${refreshKey}`}
+            key={`${logoUrl}-${refreshKey}`} // Key única com refreshKey para forçar re-render
             src={logoUrl}
             alt="Clínica Freud Logo"
             className="w-auto h-full max-h-full object-contain"
-            loading="eager"
+            loading="eager" // Carregar imediatamente, sem lazy loading
             style={{ 
               objectFit: 'contain',
               height: '100%',
@@ -154,6 +153,7 @@ export default function Logo({ onClick }: LogoProps) {
               filter: 'contrast(1.05) brightness(1.02)'
             }}
             onError={(e) => {
+              // Se a imagem falhar, mostrar placeholder
               console.error('❌ Erro ao carregar imagem do logo:', e)
               setLogoUrl(null)
             }}
@@ -178,3 +178,7 @@ export default function Logo({ onClick }: LogoProps) {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
