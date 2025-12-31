@@ -23,6 +23,9 @@ interface BlogPost {
   schema_markup?: any
 }
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function BlogPostPage() {
   const params = useParams()
   const router = useRouter()
@@ -33,7 +36,12 @@ export default function BlogPostPage() {
 
   useEffect(() => {
     async function fetchPost() {
-      if (!slug) return
+      if (!slug) {
+        console.log('❌ Slug vazio')
+        return
+      }
+
+      console.log('🔍 A buscar artigo com slug:', slug)
 
       try {
         // Buscar artigo
@@ -45,15 +53,19 @@ export default function BlogPostPage() {
           .single()
 
         if (error) {
-          console.error('Erro ao buscar artigo:', error)
+          console.error('❌ Erro ao buscar artigo:', error)
+          console.error('❌ Código do erro:', error.code)
+          console.error('❌ Mensagem:', error.message)
           if (error.code === 'PGRST116') {
             // Artigo não encontrado
+            console.log('⚠️ Artigo não encontrado, a redirecionar para /blog')
             router.push('/blog')
           }
           return
         }
 
         if (data) {
+          console.log('✅ Artigo encontrado:', data.title)
           setPost(data)
           
           // Incrementar contador de visualizações
@@ -72,6 +84,8 @@ export default function BlogPostPage() {
             .limit(3)
 
           setRelatedPosts(related || [])
+        } else {
+          console.log('⚠️ Nenhum dado retornado')
         }
       } catch (err) {
         console.error('Erro ao buscar artigo:', err)
@@ -173,129 +187,166 @@ export default function BlogPostPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
       />
       
-      {/* Hero Section com Imagem */}
-      <section className="relative pt-32 pb-16">
-        {post.featured_image_url && (
-          <div className="absolute inset-0 z-0">
-            <Image
-              src={post.featured_image_url}
-              alt={post.title}
-              fill
-              className="object-cover opacity-20"
-              priority
-              sizes="100vw"
-            />
-            <div className="absolute inset-0 bg-clinica-bg/80"></div>
-          </div>
-        )}
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Breadcrumbs */}
+      <section className="bg-clinica-bg border-b border-clinica-primary/10 pt-24 pb-4">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex items-center gap-2 text-sm text-clinica-text/60 mb-4">
+            <Link href="/" className="hover:text-clinica-primary transition-colors">Início</Link>
+            <span>/</span>
+            <Link href="/blog" className="hover:text-clinica-primary transition-colors">Blog</Link>
+            <span>/</span>
+            <span className="text-clinica-text/40">{post.title}</span>
+          </nav>
+        </div>
+      </section>
+
+      {/* Hero Section - Estilo Quantoma */}
+      <section className="bg-clinica-bg pt-8 pb-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <Link
-              href="/blog"
-              className="inline-flex items-center text-clinica-cta hover:text-clinica-primary transition-colors mb-6"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao blog
-            </Link>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-clinica-primary mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-clinica-primary mb-8 leading-[1.1] tracking-tight">
               {post.title}
             </h1>
-            <div className="flex flex-wrap items-center gap-4 text-clinica-text/70 mb-6">
-              {post.published_at && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>{formatDate(post.published_at)}</span>
-                </div>
-              )}
+            
+            {/* Metadata - Estilo Quantoma */}
+            <div className="flex flex-wrap items-center gap-6 text-clinica-text/70 mb-8 text-base">
               {post.author_name && (
                 <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  <span>{post.author_name}</span>
+                  <span className="text-clinica-text/50">Por</span>
+                  <span className="font-semibold text-clinica-text">{post.author_name}</span>
                 </div>
               )}
+              {post.published_at && (
+                <>
+                  <span className="text-clinica-text/30">•</span>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span>{formatDate(post.published_at)}</span>
+                  </div>
+                </>
+              )}
+              <span className="text-clinica-text/30">•</span>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>{estimateReadingTime(post.content)} min de leitura</span>
+                <span>{estimateReadingTime(post.content)} min leitura</span>
               </div>
-              <button
-                onClick={handleShare}
-                className="flex items-center gap-2 text-clinica-cta hover:text-clinica-primary transition-colors"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>Partilhar</span>
-              </button>
             </div>
-            {post.excerpt && (
-              <p className="text-lg text-clinica-text/80 italic border-l-4 border-clinica-primary pl-4 mb-8">
-                {post.excerpt}
-              </p>
-            )}
           </motion.div>
         </div>
       </section>
 
-      {/* Conteúdo do Artigo */}
+      {/* Conteúdo do Artigo - Estilo Quantoma */}
       <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="prose prose-lg max-w-none
-            prose-headings:text-clinica-primary
-            prose-p:text-clinica-text
-            prose-a:text-clinica-cta
-            prose-strong:text-clinica-primary
-            prose-ul:text-clinica-text
-            prose-ol:text-clinica-text
-            prose-li:text-clinica-text
-            prose-blockquote:border-clinica-primary
-            prose-blockquote:text-clinica-text/80
-            prose-code:text-clinica-cta
-            prose-pre:bg-clinica-accent
-            prose-img:rounded-lg
-            prose-img:shadow-lg"
+          className="prose prose-lg prose-slate max-w-none
+            prose-headings:text-clinica-primary prose-headings:font-bold
+            prose-headings:leading-tight prose-headings:tracking-tight
+            prose-h1:text-4xl prose-h1:mb-6 prose-h1:mt-12 prose-h1:font-extrabold
+            prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-5 prose-h2:font-bold
+            prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-h3:font-bold
+            prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-3 prose-h4:font-semibold
+            prose-p:text-clinica-text prose-p:text-[18px] prose-p:leading-[1.75] prose-p:mb-6
+            prose-p:font-normal prose-p:tracking-normal
+            prose-a:text-clinica-cta prose-a:font-semibold prose-a:no-underline
+            prose-a:hover:text-clinica-primary prose-a:hover:underline prose-a:transition-colors
+            prose-strong:text-clinica-primary prose-strong:font-bold
+            prose-ul:text-clinica-text prose-ul:my-6 prose-ul:pl-6 prose-ul:space-y-2
+            prose-ol:text-clinica-text prose-ol:my-6 prose-ol:pl-6 prose-ol:space-y-2
+            prose-li:text-clinica-text prose-li:my-2 prose-li:leading-relaxed prose-li:text-[18px]
+            prose-blockquote:border-l-4 prose-blockquote:border-clinica-primary
+            prose-blockquote:bg-clinica-accent/20 prose-blockquote:py-4 prose-blockquote:px-6
+            prose-blockquote:rounded-r-lg prose-blockquote:my-8 prose-blockquote:not-italic
+            prose-blockquote:text-clinica-text prose-blockquote:text-[18px]
+            prose-code:text-clinica-cta prose-code:bg-clinica-accent/50 prose-code:px-2 prose-code:py-1
+            prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:font-semibold
+            prose-pre:bg-clinica-accent/30 prose-pre:border prose-pre:border-clinica-primary/10
+            prose-pre:rounded-lg prose-pre:p-6 prose-pre:overflow-x-auto prose-pre:my-8
+            prose-img:rounded-2xl prose-img:shadow-2xl prose-img:my-10 prose-img:w-full
+            prose-img:object-cover prose-img:border prose-img:border-clinica-primary/10
+            prose-figure:my-10
+            prose-figcaption:text-clinica-text/60 prose-figcaption:text-sm prose-figcaption:italic
+            prose-figcaption:mt-3 prose-figcaption:text-center
+            prose-table:w-full prose-table:my-8 prose-table:border-collapse prose-table:shadow-lg
+            prose-table:rounded-lg prose-table:overflow-hidden
+            prose-th:bg-clinica-primary prose-th:text-white prose-th:font-bold prose-th:p-4
+            prose-th:border prose-th:border-clinica-primary/20 prose-th:text-left
+            prose-td:p-4 prose-td:border prose-td:border-clinica-primary/10 prose-td:bg-clinica-bg
+            prose-td:text-clinica-text
+            prose-hr:border-clinica-primary/20 prose-hr:my-10 prose-hr:border-t-2"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
+        
+        {/* Botão Partilhar no final */}
+        <div className="mt-12 pt-8 border-t border-clinica-primary/10">
+          <button
+            onClick={handleShare}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-clinica-cta text-clinica-text rounded-lg hover:bg-clinica-cta/90 transition-colors font-semibold shadow-md hover:shadow-lg"
+          >
+            <Share2 className="w-5 h-5" />
+            <span>Partilhar</span>
+          </button>
+        </div>
       </article>
 
-      {/* Artigos Relacionados */}
+      {/* Navegação entre Artigos */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 border-t border-clinica-primary/10 pt-8">
+        <Link
+          href="/blog"
+          className="inline-flex items-center text-clinica-cta hover:text-clinica-primary transition-colors font-medium"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          ← Voltar ao blog
+        </Link>
+      </section>
+
+      {/* Artigos Relacionados - Estilo Quantoma */}
       {relatedPosts.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          <h2 className="text-2xl font-bold text-clinica-primary mb-8">Artigos Relacionados</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedPosts.map((relatedPost) => (
-              <Link
-                key={relatedPost.id}
-                href={`/blog/${relatedPost.slug}`}
-                className="bg-clinica-accent border border-clinica-primary/20 rounded-xl overflow-hidden hover:shadow-xl transition-shadow group"
-              >
-                {relatedPost.featured_image_url && (
-                  <div className="relative h-40 bg-clinica-primary/10 overflow-hidden">
-                    <Image
-                      src={relatedPost.featured_image_url}
-                      alt={relatedPost.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
-                  </div>
-                )}
-                <div className="p-4">
-                  <h3 className="text-lg font-bold text-clinica-primary mb-2 group-hover:text-clinica-cta transition-colors line-clamp-2">
-                    {relatedPost.title}
-                  </h3>
-                  {relatedPost.excerpt && (
-                    <p className="text-sm text-clinica-text/70 line-clamp-2">
-                      {relatedPost.excerpt}
-                    </p>
+        <section className="bg-clinica-accent/30 py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-bold text-clinica-primary mb-12 text-center">Artigos Relacionados</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {relatedPosts.map((relatedPost) => (
+                <Link
+                  key={relatedPost.id}
+                  href={`/blog/${relatedPost.slug}`}
+                  className="bg-clinica-bg border border-clinica-primary/10 rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group hover:border-clinica-primary/30"
+                >
+                  {relatedPost.featured_image_url && (
+                    <div className="relative h-48 bg-clinica-primary/10 overflow-hidden">
+                      <Image
+                        src={relatedPost.featured_image_url}
+                        alt={relatedPost.title}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                    </div>
                   )}
-                </div>
-              </Link>
-            ))}
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-clinica-primary mb-3 group-hover:text-clinica-cta transition-colors line-clamp-2 leading-tight">
+                      {relatedPost.title}
+                    </h3>
+                    {relatedPost.excerpt && (
+                      <p className="text-clinica-text/70 line-clamp-3 leading-relaxed text-base">
+                        {relatedPost.excerpt}
+                      </p>
+                    )}
+                    {relatedPost.published_at && (
+                      <p className="text-sm text-clinica-text/50 mt-4">
+                        {formatDate(relatedPost.published_at)}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
       )}
