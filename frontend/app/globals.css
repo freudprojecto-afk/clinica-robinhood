@@ -108,7 +108,7 @@ textarea:focus {
   outline-offset: 2px !important;
 }
 
-/* Estilos para tabelas em artigos do blog - Estilo Mercado Bitcoin */
+/* Estilos para tabelas em artigos do blog - Compactas e elegantes */
 .prose table {
   display: table !important;
   width: 100% !important;
@@ -134,10 +134,10 @@ textarea:focus {
   background-color: #355a6c !important; /* clinica-primary */
   color: #ffffff !important;
   font-weight: 700 !important;
-  padding: 1.25rem !important;
+  padding: 0.75rem !important; /* Compacto */
   text-align: left !important;
   border: 1px solid rgba(53, 90, 108, 0.3) !important;
-  font-size: 1rem !important;
+  font-size: 1rem !important; /* 16px - ligeiramente menor */
   line-height: 1.5 !important;
 }
 
@@ -155,12 +155,12 @@ textarea:focus {
 }
 
 .prose table td {
-  padding: 1.25rem !important;
+  padding: 0.75rem !important; /* Compacto */
   border: 1px solid rgba(53, 90, 108, 0.2) !important;
   background-color: #f2f2f0 !important; /* clinica-bg */
   color: #1f2a30 !important; /* clinica-text */
-  font-size: 1.1875rem !important; /* 19px */
-  line-height: 1.9 !important;
+  font-size: 1rem !important; /* 16px - ligeiramente menor que o texto corrido */
+  line-height: 1.6 !important;
   vertical-align: top !important;
 }
 
@@ -174,6 +174,34 @@ textarea:focus {
   border-right: none !important;
 }
 
+/* Estilos para imagens - Espaçamento adequado */
+.prose img {
+  margin: 3.5rem auto !important; /* my-14 = 3.5rem */
+  display: block !important;
+}
+
+.prose figure {
+  margin: 3.5rem auto !important; /* Espaçamento adequado */
+}
+
+.prose figure img {
+  margin: 0 auto !important;
+}
+
+.prose p + img,
+.prose img + p,
+.prose figure + p,
+.prose p + figure {
+  margin-top: 2rem !important; /* Espaço entre texto e imagem */
+}
+
+/* Garantir que parágrafos têm espaçamento uniforme */
+.prose p {
+  margin-bottom: 2rem !important; /* mb-8 = 2rem */
+  font-size: 1.1875rem !important; /* 19px - uniforme */
+  line-height: 1.9 !important;
+}
+
 /* Responsividade para tabelas */
 @media (max-width: 768px) {
   .prose table {
@@ -184,8 +212,8 @@ textarea:focus {
   
   .prose table th,
   .prose table td {
-    padding: 0.75rem !important;
-    font-size: 1rem !important;
+    padding: 0.5rem !important;
+    font-size: 0.9375rem !important; /* 15px em mobile */
   }
 }
 
@@ -204,12 +232,12 @@ figure.wp-block-table {
   overflow-x: auto !important;
 }
 
-/* Estilos para listas e bullet points - Corrigir distorções */
+/* Estilos para listas e bullet points - Uniforme e elegante */
 .prose ul,
 .prose ol {
   list-style-position: outside !important;
   padding-left: 2rem !important;
-  margin: 1.75rem 0 !important;
+  margin: 2rem 0 !important;
 }
 
 .prose ul {
@@ -221,10 +249,10 @@ figure.wp-block-table {
 }
 
 .prose li {
-  margin: 0.5rem 0 !important;
+  margin: 0.75rem 0 !important;
   padding-left: 0.5rem !important;
   line-height: 1.9 !important;
-  font-size: 1.1875rem !important; /* 19px */
+  font-size: 1.1875rem !important; /* 19px - uniforme com parágrafos */
   color: #1f2a30 !important; /* clinica-text */
 }
 
@@ -239,9 +267,17 @@ figure.wp-block-table {
 .prose ol ol,
 .prose ul ol,
 .prose ol ul {
-  margin-top: 0.5rem !important;
-  margin-bottom: 0.5rem !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
   padding-left: 1.5rem !important;
+}
+
+/* Espaçamento uniforme entre parágrafos e listas */
+.prose p + ul,
+.prose p + ol,
+.prose ul + p,
+.prose ol + p {
+  margin-top: 2rem !important;
 }
 
 .prose ul ul {
