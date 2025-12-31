@@ -107,3 +107,99 @@ textarea:focus {
   outline: 2px solid #a68a62 !important;  /* clinica-menu */
   outline-offset: 2px !important;
 }
+
+/* Estilos para tabelas em artigos do blog - Estilo Mercado Bitcoin */
+.prose table {
+  display: table !important;
+  width: 100% !important;
+  margin: 2.5rem 0 !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  border: 1px solid rgba(53, 90, 108, 0.2) !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  background-color: #f2f2f0 !important;
+}
+
+.prose table thead {
+  background-color: #355a6c !important; /* clinica-primary */
+}
+
+.prose table thead tr {
+  border-bottom: 2px solid rgba(53, 90, 108, 0.3) !important;
+}
+
+.prose table th {
+  background-color: #355a6c !important; /* clinica-primary */
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  padding: 1.25rem !important;
+  text-align: left !important;
+  border: 1px solid rgba(53, 90, 108, 0.3) !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+}
+
+.prose table tbody tr {
+  border-bottom: 1px solid rgba(53, 90, 108, 0.1) !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.prose table tbody tr:hover {
+  background-color: rgba(230, 222, 211, 0.5) !important; /* clinica-accent com opacidade */
+}
+
+.prose table tbody tr:last-child {
+  border-bottom: none !important;
+}
+
+.prose table td {
+  padding: 1.25rem !important;
+  border: 1px solid rgba(53, 90, 108, 0.2) !important;
+  background-color: #f2f2f0 !important; /* clinica-bg */
+  color: #1f2a30 !important; /* clinica-text */
+  font-size: 1.1875rem !important; /* 19px */
+  line-height: 1.9 !important;
+  vertical-align: top !important;
+}
+
+.prose table td:first-child,
+.prose table th:first-child {
+  border-left: none !important;
+}
+
+.prose table td:last-child,
+.prose table th:last-child {
+  border-right: none !important;
+}
+
+/* Responsividade para tabelas */
+@media (max-width: 768px) {
+  .prose table {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .prose table th,
+  .prose table td {
+    padding: 0.75rem !important;
+    font-size: 1rem !important;
+  }
+}
+
+/* Garantir que tabelas do WordPress são renderizadas */
+.wp-block-table,
+figure.wp-block-table {
+  margin: 2.5rem 0 !important;
+}
+
+.wp-block-table table {
+  display: table !important;
+  width: 100% !important;
+}
+
+.wp-block-table__content-wrapper {
+  overflow-x: auto !important;
+}
