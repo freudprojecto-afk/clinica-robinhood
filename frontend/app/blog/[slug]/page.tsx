@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Calendar, User, ArrowLeft, Clock, Share2 } from 'lucide-react'
-import { supabase } from '../../../lib/supabase'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -200,7 +200,7 @@ export default function BlogPostPage() {
         </div>
       </section>
 
-      {/* Hero Section - Estilo Quantoma */}
+      {/* Hero Section - Estilo Mercado Bitcoin */}
       <section className="bg-clinica-bg pt-8 pb-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -208,12 +208,12 @@ export default function BlogPostPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-clinica-primary mb-8 leading-[1.1] tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-clinica-primary mb-8 leading-[1.2] tracking-tight">
               {post.title}
             </h1>
             
-            {/* Metadata - Estilo Quantoma */}
-            <div className="flex flex-wrap items-center gap-6 text-clinica-text/70 mb-8 text-base">
+            {/* Metadata */}
+            <div className="flex flex-wrap items-center gap-4 text-clinica-text/70 mb-8 text-sm">
               {post.author_name && (
                 <div className="flex items-center gap-2">
                   <span className="text-clinica-text/50">Por</span>
@@ -232,54 +232,66 @@ export default function BlogPostPage() {
               <span className="text-clinica-text/30">•</span>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>{estimateReadingTime(post.content)} min leitura</span>
+                <span>{estimateReadingTime(post.content)} min</span>
               </div>
             </div>
+
+            {/* Excerpt destacado */}
+            {post.excerpt && (
+              <div className="bg-clinica-accent/40 border-l-4 border-clinica-primary rounded-r-lg p-6 mb-8">
+                <p className="text-lg text-clinica-text/90 leading-relaxed font-medium">
+                  {post.excerpt}
+                </p>
+              </div>
+            )}
           </motion.div>
         </div>
       </section>
 
-      {/* Conteúdo do Artigo - Estilo Quantoma */}
+      {/* Conteúdo do Artigo - Estilo Mercado Bitcoin (leitura fácil) */}
       <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="prose prose-lg prose-slate max-w-none
+          className="prose prose-lg max-w-none
             prose-headings:text-clinica-primary prose-headings:font-bold
             prose-headings:leading-tight prose-headings:tracking-tight
-            prose-h1:text-4xl prose-h1:mb-6 prose-h1:mt-12 prose-h1:font-extrabold
-            prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-5 prose-h2:font-bold
-            prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-h3:font-bold
-            prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-3 prose-h4:font-semibold
-            prose-p:text-clinica-text prose-p:text-[18px] prose-p:leading-[1.75] prose-p:mb-6
-            prose-p:font-normal prose-p:tracking-normal
+            prose-h1:text-3xl prose-h1:mb-6 prose-h1:mt-12 prose-h1:font-extrabold prose-h1:leading-tight
+            prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-5 prose-h2:font-bold prose-h2:leading-tight
+            prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4 prose-h3:font-bold prose-h3:leading-tight
+            prose-h4:text-lg prose-h4:mt-6 prose-h4:mb-3 prose-h4:font-semibold
+            prose-p:text-clinica-text prose-p:text-[19px] prose-p:leading-[1.9] prose-p:mb-7
+            prose-p:font-normal prose-p:tracking-wide
             prose-a:text-clinica-cta prose-a:font-semibold prose-a:no-underline
             prose-a:hover:text-clinica-primary prose-a:hover:underline prose-a:transition-colors
             prose-strong:text-clinica-primary prose-strong:font-bold
-            prose-ul:text-clinica-text prose-ul:my-6 prose-ul:pl-6 prose-ul:space-y-2
-            prose-ol:text-clinica-text prose-ol:my-6 prose-ol:pl-6 prose-ol:space-y-2
-            prose-li:text-clinica-text prose-li:my-2 prose-li:leading-relaxed prose-li:text-[18px]
+            prose-ul:text-clinica-text prose-ul:my-7 prose-ul:pl-6 prose-ul:space-y-3
+            prose-ol:text-clinica-text prose-ol:my-7 prose-ol:pl-6 prose-ol:space-y-3
+            prose-li:text-clinica-text prose-li:my-3 prose-li:leading-relaxed prose-li:text-[19px]
             prose-blockquote:border-l-4 prose-blockquote:border-clinica-primary
-            prose-blockquote:bg-clinica-accent/20 prose-blockquote:py-4 prose-blockquote:px-6
+            prose-blockquote:bg-clinica-accent/30 prose-blockquote:py-5 prose-blockquote:px-6
             prose-blockquote:rounded-r-lg prose-blockquote:my-8 prose-blockquote:not-italic
-            prose-blockquote:text-clinica-text prose-blockquote:text-[18px]
+            prose-blockquote:text-clinica-text prose-blockquote:text-[19px] prose-blockquote:leading-relaxed
             prose-code:text-clinica-cta prose-code:bg-clinica-accent/50 prose-code:px-2 prose-code:py-1
             prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:font-semibold
             prose-pre:bg-clinica-accent/30 prose-pre:border prose-pre:border-clinica-primary/10
             prose-pre:rounded-lg prose-pre:p-6 prose-pre:overflow-x-auto prose-pre:my-8
-            prose-img:rounded-2xl prose-img:shadow-2xl prose-img:my-10 prose-img:w-full
+            prose-img:rounded-xl prose-img:shadow-xl prose-img:my-10 prose-img:w-full
             prose-img:object-cover prose-img:border prose-img:border-clinica-primary/10
             prose-figure:my-10
             prose-figcaption:text-clinica-text/60 prose-figcaption:text-sm prose-figcaption:italic
             prose-figcaption:mt-3 prose-figcaption:text-center
-            prose-table:w-full prose-table:my-8 prose-table:border-collapse prose-table:shadow-lg
-            prose-table:rounded-lg prose-table:overflow-hidden
-            prose-th:bg-clinica-primary prose-th:text-white prose-th:font-bold prose-th:p-4
-            prose-th:border prose-th:border-clinica-primary/20 prose-th:text-left
-            prose-td:p-4 prose-td:border prose-td:border-clinica-primary/10 prose-td:bg-clinica-bg
-            prose-td:text-clinica-text
-            prose-hr:border-clinica-primary/20 prose-hr:my-10 prose-hr:border-t-2"
+            prose-table:w-full prose-table:my-10 prose-table:border-collapse prose-table:shadow-lg
+            prose-table:rounded-lg prose-table:overflow-hidden prose-table:border prose-table:border-clinica-primary/20
+            prose-th:bg-clinica-primary prose-th:text-white prose-th:font-bold prose-th:p-5
+            prose-th:border prose-th:border-clinica-primary/30 prose-th:text-left prose-th:text-base
+            prose-th:first:rounded-tl-lg prose-th:last:rounded-tr-lg
+            prose-td:p-5 prose-td:border prose-td:border-clinica-primary/20 prose-td:bg-clinica-bg
+            prose-td:text-clinica-text prose-td:text-[19px] prose-td:leading-relaxed
+            prose-td:align-top
+            prose-tr:border-b prose-tr:border-clinica-primary/10 prose-tr:last:border-b-0
+            prose-hr:border-clinica-primary/20 prose-hr:my-12 prose-hr:border-t-2"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
         
