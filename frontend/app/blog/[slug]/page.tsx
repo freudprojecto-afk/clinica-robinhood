@@ -235,15 +235,6 @@ export default function BlogPostPage() {
                 <span>{estimateReadingTime(post.content)} min</span>
               </div>
             </div>
-
-            {/* Excerpt destacado */}
-            {post.excerpt && (
-              <div className="bg-clinica-accent/40 border-l-4 border-clinica-primary rounded-r-lg p-6 mb-8">
-                <p className="text-lg text-clinica-text/90 leading-relaxed font-medium">
-                  {post.excerpt}
-                </p>
-              </div>
-            )}
           </motion.div>
         </div>
       </section>
@@ -266,9 +257,10 @@ export default function BlogPostPage() {
             prose-a:text-clinica-cta prose-a:font-semibold prose-a:no-underline
             prose-a:hover:text-clinica-primary prose-a:hover:underline prose-a:transition-colors
             prose-strong:text-clinica-primary prose-strong:font-bold
-            prose-ul:text-clinica-text prose-ul:my-7 prose-ul:pl-6 prose-ul:space-y-3
-            prose-ol:text-clinica-text prose-ol:my-7 prose-ol:pl-6 prose-ol:space-y-3
-            prose-li:text-clinica-text prose-li:my-3 prose-li:leading-relaxed prose-li:text-[19px]
+            prose-ul:text-clinica-text prose-ul:my-7 prose-ul:pl-8 prose-ul:list-disc prose-ul:list-outside
+            prose-ol:text-clinica-text prose-ol:my-7 prose-ol:pl-8 prose-ol:list-decimal prose-ol:list-outside
+            prose-li:text-clinica-text prose-li:my-2 prose-li:leading-relaxed prose-li:text-[19px] prose-li:pl-2
+            prose-li:marker:text-clinica-primary prose-li:marker:font-bold
             prose-blockquote:border-l-4 prose-blockquote:border-clinica-primary
             prose-blockquote:bg-clinica-accent/30 prose-blockquote:py-5 prose-blockquote:px-6
             prose-blockquote:rounded-r-lg prose-blockquote:my-8 prose-blockquote:not-italic
