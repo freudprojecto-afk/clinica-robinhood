@@ -252,14 +252,14 @@ export default function BlogPostPage() {
             prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-5 prose-h2:font-bold prose-h2:leading-tight
             prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4 prose-h3:font-bold prose-h3:leading-tight
             prose-h4:text-lg prose-h4:mt-6 prose-h4:mb-3 prose-h4:font-semibold
-            prose-p:text-clinica-text prose-p:text-[19px] prose-p:leading-[1.9] prose-p:mb-7
+            prose-p:text-clinica-text prose-p:text-[19px] prose-p:leading-[1.9] prose-p:mb-8
             prose-p:font-normal prose-p:tracking-wide
             prose-a:text-clinica-cta prose-a:font-semibold prose-a:no-underline
             prose-a:hover:text-clinica-primary prose-a:hover:underline prose-a:transition-colors
             prose-strong:text-clinica-primary prose-strong:font-bold
-            prose-ul:text-clinica-text prose-ul:my-7 prose-ul:pl-8 prose-ul:list-disc prose-ul:list-outside
-            prose-ol:text-clinica-text prose-ol:my-7 prose-ol:pl-8 prose-ol:list-decimal prose-ol:list-outside
-            prose-li:text-clinica-text prose-li:my-2 prose-li:leading-relaxed prose-li:text-[19px] prose-li:pl-2
+            prose-ul:text-clinica-text prose-ul:my-8 prose-ul:pl-8 prose-ul:list-disc prose-ul:list-outside
+            prose-ol:text-clinica-text prose-ol:my-8 prose-ol:pl-8 prose-ol:list-decimal prose-ol:list-outside
+            prose-li:text-clinica-text prose-li:my-3 prose-li:leading-[1.9] prose-li:text-[19px] prose-li:pl-2
             prose-li:marker:text-clinica-primary prose-li:marker:font-bold
             prose-blockquote:border-l-4 prose-blockquote:border-clinica-primary
             prose-blockquote:bg-clinica-accent/30 prose-blockquote:py-5 prose-blockquote:px-6
@@ -269,18 +269,18 @@ export default function BlogPostPage() {
             prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:font-semibold
             prose-pre:bg-clinica-accent/30 prose-pre:border prose-pre:border-clinica-primary/10
             prose-pre:rounded-lg prose-pre:p-6 prose-pre:overflow-x-auto prose-pre:my-8
-            prose-img:rounded-xl prose-img:shadow-xl prose-img:my-10 prose-img:w-full
+            prose-img:rounded-xl prose-img:shadow-xl prose-img:my-14 prose-img:w-full prose-img:mx-auto
             prose-img:object-cover prose-img:border prose-img:border-clinica-primary/10
-            prose-figure:my-10
+            prose-figure:my-14 prose-figure:mx-auto
             prose-figcaption:text-clinica-text/60 prose-figcaption:text-sm prose-figcaption:italic
             prose-figcaption:mt-3 prose-figcaption:text-center
             prose-table:w-full prose-table:my-10 prose-table:border-collapse prose-table:shadow-lg
             prose-table:rounded-lg prose-table:overflow-hidden prose-table:border prose-table:border-clinica-primary/20
-            prose-th:bg-clinica-primary prose-th:text-white prose-th:font-bold prose-th:p-5
-            prose-th:border prose-th:border-clinica-primary/30 prose-th:text-left prose-th:text-base
+            prose-th:bg-clinica-primary prose-th:text-white prose-th:font-bold prose-th:p-3 prose-th:text-[16px]
+            prose-th:border prose-th:border-clinica-primary/30 prose-th:text-left
             prose-th:first:rounded-tl-lg prose-th:last:rounded-tr-lg
-            prose-td:p-5 prose-td:border prose-td:border-clinica-primary/20 prose-td:bg-clinica-bg
-            prose-td:text-clinica-text prose-td:text-[19px] prose-td:leading-relaxed
+            prose-td:p-3 prose-td:border prose-td:border-clinica-primary/20 prose-td:bg-clinica-bg
+            prose-td:text-clinica-text prose-td:text-[16px] prose-td:leading-relaxed
             prose-td:align-top
             prose-tr:border-b prose-tr:border-clinica-primary/10 prose-tr:last:border-b-0
             prose-hr:border-clinica-primary/20 prose-hr:my-12 prose-hr:border-t-2"
