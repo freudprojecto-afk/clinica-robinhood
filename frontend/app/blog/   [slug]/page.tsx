@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Calendar, User, ArrowLeft, Clock, Share2 } from 'lucide-react'
-import { supabase } from '../../../../lib/supabase'
+import { supabase } from '../../../lib/supabase'
 import Link from 'next/link'
 import Image from 'next/image'
 
