@@ -513,3 +513,74 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+// DELETE: Remover artigo do Supabase quando deletado no WordPress
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { wordpress_id, secret } = body
+
+    const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
+    if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const validatedId = validateWordPressId(wordpress_id)
+    if (!validatedId) {
+      return NextResponse.json(
+        { error: 'wordpress_id é obrigatório e deve ser um número inteiro positivo' },
+        { status: 400 }
+      )
+    }
+
+    const { data: existingPost, error: fetchError } = await supabase
+      .from('blog_posts')
+      .select('id, title, wordpress_id')
+      .eq('wordpress_id', validatedId)
+      .single()
+
+    if (fetchError || !existingPost) {
+      return NextResponse.json(
+        { 
+          success: true, 
+          message: 'Artigo não encontrado no Supabase (já pode ter sido removido)',
+          wordpress_id: validatedId
+        },
+        { status: 200 }
+      )
+    }
+
+    const { error: deleteError } = await supabase
+      .from('blog_posts')
+      .delete()
+      .eq('wordpress_id', validatedId)
+
+    if (deleteError) {
+      console.error('Erro ao remover artigo:', {
+        wordpress_id: validatedId,
+        error: deleteError.message,
+        code: deleteError.code
+      })
+      throw deleteError
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Artigo removido com sucesso',
+      wordpress_id: validatedId,
+      title: existingPost.title
+    })
+  } catch (error: any) {
+    console.error('Erro ao remover artigo:', {
+      error: error.message,
+      stack: error.stack
+    })
+    return NextResponse.json(
+      { error: error.message || 'Erro interno do servidor' },
+      { status: 500 }
+    )
+  }
+}
