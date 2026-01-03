@@ -1,21 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Validação de variáveis de ambiente
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+if (!SUPABASE_URL) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL não está definida nas variáveis de ambiente')
+}
+
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY não está definida')
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-// Função para limpar HTML
+// Configurações
+const WORDPRESS_API_URL = process.env.WORDPRESS_API_URL || 'https://clinicafreud.pt'
+const WORDPRESS_API_TIMEOUT = 30000 // 30 segundos
+const SYNC_DELAY_MS = 100 // Delay entre sincronizações no GET
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || WORDPRESS_API_URL
+
+// Função para fetch com timeout
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout: number = WORDPRESS_API_TIMEOUT): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+    clearTimeout(timeoutId)
+    return response
+  } catch (error: any) {
+    clearTimeout(timeoutId)
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout após ${timeout}ms`)
+    }
+    throw error
+  }
+}
+
+// Função para limpar HTML (melhorada)
 function cleanHtml(html: string): string {
   if (!html) return ''
-  return html
+  
+  // Remove scripts e styles
+  let cleaned = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+  
+  // Remove eventos inline (onclick, onerror, etc)
+  cleaned = cleaned.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+  
+  // Remove javascript: URLs
+  cleaned = cleaned.replace(/javascript:/gi, '')
+  
+  return cleaned
 }
 
 // Função para criar slug
 function createSlug(title: string): string {
+  if (!title) return ''
+  
   return title
     .toLowerCase()
     .normalize('NFD')
@@ -24,16 +71,44 @@ function createSlug(title: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+// Função para validar wordpress_id
+function validateWordPressId(id: any): number | null {
+  if (id === null || id === undefined) return null
+  
+  const numId = Number(id)
+  if (isNaN(numId) || numId <= 0 || !Number.isInteger(numId)) {
+    return null
+  }
+  
+  return numId
+}
+
+// Função para tratar erros HTTP do WordPress
+function handleWordPressError(status: number, statusText: string): { success: false; message: string } {
+  switch (status) {
+    case 404:
+      return { success: false, message: 'Artigo não encontrado no WordPress' }
+    case 401:
+      return { success: false, message: 'Acesso não autorizado ao WordPress' }
+    case 403:
+      return { success: false, message: 'Acesso negado ao WordPress' }
+    case 500:
+      return { success: false, message: 'Erro interno do servidor WordPress' }
+    default:
+      return { success: false, message: `Erro HTTP ${status}: ${statusText}` }
+  }
+}
+
 // Sincronizar um artigo específico do WordPress
 async function syncWordPressPost(wordpressId: number) {
   try {
     // Buscar artigo do WordPress via REST API
-    const response = await fetch(
-      `https://clinicafreud.pt/wp-json/wp/v2/posts/${wordpressId}?_embed=true`
+    const response = await fetchWithTimeout(
+      `${WORDPRESS_API_URL}/wp-json/wp/v2/posts/${wordpressId}?_embed=true`
     )
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      return handleWordPressError(response.status, response.statusText)
     }
 
     const wpPost = await response.json()
@@ -64,62 +139,82 @@ async function syncWordPressPost(wordpressId: number) {
       authorEmail = wpPost._embedded.author[0].email
     }
 
-    // Extrair dados SEO do Rank Math (via meta fields)
-    // Rank Math armazena SEO em wpPost.meta ou wpPost.yoast_meta
-    const metaTitle = wpPost.meta?.['rank_math_title'] || 
-                     wpPost.meta?.['_rank_math_title'] ||
-                     wpPost.yoast_meta?.['yoast_wpseo_title'] ||
-                     null
-    const metaDescription = wpPost.meta?.['rank_math_description'] || 
-                           wpPost.meta?.['_rank_math_description'] ||
-                           wpPost.yoast_meta?.['yoast_wpseo_metadesc'] ||
-                           null
-    const metaKeywords = wpPost.meta?.['rank_math_focus_keyword'] ||
-                        wpPost.meta?.['_rank_math_focus_keyword'] ||
-                        wpPost.yoast_meta?.['yoast_wpseo_focuskw'] ||
-                        null
-    const ogImage = wpPost.meta?.['rank_math_facebook_image'] ||
-                   wpPost.meta?.['_rank_math_facebook_image'] ||
-                   wpPost.meta?.['rank_math_og_image'] ||
-                   wpPost.meta?.['_rank_math_og_image'] ||
-                   null
-    const ogTitle = wpPost.meta?.['rank_math_facebook_title'] ||
-                   wpPost.meta?.['_rank_math_facebook_title'] ||
-                   null
-    const ogDescription = wpPost.meta?.['rank_math_facebook_description'] ||
-                         wpPost.meta?.['_rank_math_facebook_description'] ||
-                         null
+    // Função auxiliar para extrair meta field (tenta com e sem underscore)
+    const getMetaField = (fieldName: string): any => {
+      return wpPost.meta?.[fieldName] || 
+             wpPost.meta?.[`_${fieldName}`] ||
+             wpPost.yoast_meta?.[fieldName] ||
+             null
+    }
+
+    // Extrair TODOS os dados SEO do Rank Math
+    let metaTitle = getMetaField('rank_math_title') || getMetaField('yoast_wpseo_title')
+    let metaDescription = getMetaField('rank_math_description') || getMetaField('yoast_wpseo_metadesc')
+    
+    // Keywords (focus keyword principal e secundários)
+    const metaKeywords = getMetaField('rank_math_focus_keyword') || getMetaField('yoast_wpseo_focuskw')
+    const secondaryKeywords = getMetaField('rank_math_secondary_focus_keyword')
+    const tertiaryKeywords = getMetaField('rank_math_tertiary_focus_keyword')
+    
+    // Canonical URL (usar do Rank Math se disponível, senão usar link original)
+    const canonicalUrl = getMetaField('rank_math_canonical_url') || wpPost.link
+    
+    // Robots Meta
+    const robotsMeta = getMetaField('rank_math_robots')
+    const advancedRobots = getMetaField('rank_math_advanced_robots')
+    
+    // Facebook/Open Graph
+    const ogTitle = getMetaField('rank_math_facebook_title')
+    const ogDescription = getMetaField('rank_math_facebook_description')
+    const ogImage = getMetaField('rank_math_facebook_image') || 
+                   getMetaField('rank_math_og_image')
+    
+    // Twitter Card
+    const twitterTitle = getMetaField('rank_math_twitter_title')
+    const twitterDescription = getMetaField('rank_math_twitter_description')
+    const twitterImage = getMetaField('rank_math_twitter_image')
+    const twitterCardType = getMetaField('rank_math_twitter_card_type') || 'summary_large_image'
+    
+    // Schema/Rich Snippets
+    const schemaType = getMetaField('rank_math_schema_type')
+    const articleSchemaType = getMetaField('rank_math_schema_article_type')
+    const richSnippetType = getMetaField('rank_math_rich_snippet')
+    
+    // Primary Category
+    const primaryCategory = getMetaField('rank_math_primary_category')
+    
+    // SEO Score (para referência)
+    const seoScore = getMetaField('rank_math_seo_score')
 
     // Buscar dados SEO completos via Rank Math API (se disponível)
-    // Nota: Pode ser necessário ajustar conforme a estrutura do Rank Math
-    let seoData: any = {}
+    let seoApiData: any = {}
     try {
-      // Tentar buscar via endpoint específico do Rank Math
-      const seoResponse = await fetch(
-        `https://clinicafreud.pt/wp-json/rankmath/v1/getHead?url=${encodeURIComponent(wpPost.link)}`
+      const seoResponse = await fetchWithTimeout(
+        `${WORDPRESS_API_URL}/wp-json/rankmath/v1/getHead?url=${encodeURIComponent(wpPost.link)}`
       )
       if (seoResponse.ok) {
         const seoInfo = await seoResponse.json()
-        seoData = seoInfo
+        seoApiData = seoInfo
+        
+        // Se a API retornar dados, usar como fallback para campos vazios
+        if (!metaTitle && seoInfo.title) metaTitle = seoInfo.title
+        if (!metaDescription && seoInfo.description) metaDescription = seoInfo.description
       }
     } catch (e) {
-      // Se não conseguir, usar dados dos meta fields
+      // Se não conseguir, usar dados dos meta fields (já extraídos acima)
     }
 
-    // Verificar se já existe
-    const { data: existing } = await supabase
-      .from('blog_posts')
-      .select('id')
-      .eq('wordpress_id', wpPost.id)
-      .single()
-
-    // Construir schema markup (JSON-LD) para Article
-    const schemaMarkup = {
+    // Construir schema markup (JSON-LD) completo e otimizado para Google
+    // Usar o tipo de schema definido no Rank Math, ou Article por padrão
+    const finalSchemaType = schemaType || articleSchemaType || 'Article'
+    
+    const schemaMarkup: any = {
       '@context': 'https://schema.org',
-      '@type': 'Article',
+      '@type': finalSchemaType,
       headline: metaTitle || title,
+      name: metaTitle || title,
       description: metaDescription || excerpt || '',
-      image: ogImage || featuredImageUrl || '',
+      image: (ogImage || featuredImageUrl) ? [ogImage || featuredImageUrl] : [],
       datePublished: wpPost.date || null,
       dateModified: wpPost.modified || wpPost.date || null,
       author: {
@@ -132,16 +227,46 @@ async function syncWordPressPost(wordpressId: number) {
         name: 'Clínica Freud',
         logo: {
           '@type': 'ImageObject',
-          url: 'https://clinicafreud.pt/logo.png' // Ajustar URL do logo
+          url: `${SITE_URL}/logo.png`
         }
       },
       mainEntityOfPage: {
         '@type': 'WebPage',
-        '@id': wpPost.link
+        '@id': canonicalUrl || wpPost.link
+      },
+      url: canonicalUrl || wpPost.link,
+      ...(primaryCategory ? { articleSection: primaryCategory } : {})
+    }
+
+    // Adicionar campos específicos para Article
+    if (finalSchemaType === 'Article' || finalSchemaType === 'BlogPosting' || finalSchemaType === 'NewsArticle') {
+      schemaMarkup.articleBody = content.substring(0, 5000) // Primeiros 5000 chars
+      if (wpPost.categories && wpPost.categories.length > 0) {
+        schemaMarkup.keywords = [
+          ...(metaKeywords ? [metaKeywords] : []),
+          ...(secondaryKeywords ? [secondaryKeywords] : []),
+          ...(tertiaryKeywords ? [tertiaryKeywords] : [])
+        ].filter(Boolean).join(', ')
       }
     }
 
-    const postData = {
+    // Adicionar BreadcrumbList se disponível (melhora SEO)
+    if (wpPost.link) {
+      const urlParts = new URL(wpPost.link).pathname.split('/').filter(Boolean)
+      if (urlParts.length > 0) {
+        schemaMarkup.breadcrumb = {
+          '@type': 'BreadcrumbList',
+          itemListElement: urlParts.map((part, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: part.replace(/-/g, ' '),
+            item: `${SITE_URL}/${urlParts.slice(0, index + 1).join('/')}`
+          }))
+        }
+      }
+    }
+
+    const postData: any = {
       title,
       slug,
       excerpt,
@@ -153,59 +278,106 @@ async function syncWordPressPost(wordpressId: number) {
       published_at: wpPost.date || null,
       wordpress_id: wpPost.id,
       wordpress_url: wpPost.link,
-      // Campos SEO
+      
+      // Campos SEO Básicos
       meta_title: metaTitle || null,
       meta_description: metaDescription || null,
       meta_keywords: metaKeywords || null,
+      canonical_url: canonicalUrl || wpPost.link,
+      robots_meta: robotsMeta || null,
+      advanced_robots_meta: advancedRobots || null,
+      
+      // Open Graph / Facebook
       og_title: ogTitle || metaTitle || null,
       og_description: ogDescription || metaDescription || null,
       og_image_url: ogImage || featuredImageUrl || null,
-      twitter_card_type: 'summary_large_image',
-      canonical_url: wpPost.link, // URL original do WordPress
+      
+      // Twitter Card
+      twitter_title: twitterTitle || ogTitle || metaTitle || null,
+      twitter_description: twitterDescription || ogDescription || metaDescription || null,
+      twitter_image_url: twitterImage || ogImage || featuredImageUrl || null,
+      twitter_card_type: twitterCardType || 'summary_large_image',
+      
+      // Schema Markup / Rich Snippets
+      schema_type: finalSchemaType,
       schema_markup: schemaMarkup,
+      rich_snippet_type: richSnippetType || null,
+      article_schema_type: articleSchemaType || null,
+      
+      // Keywords Adicionais
+      secondary_keywords: secondaryKeywords || null,
+      tertiary_keywords: tertiaryKeywords || null,
+      
+      // Categoria Primária
+      primary_category: primaryCategory || null,
+      
+      // SEO Score (referência)
+      seo_score: seoScore || null,
+      
+      // Timestamp
       updated_at: new Date().toISOString(),
     }
 
-    if (existing) {
-      // Atualizar artigo existente
-      const { data, error } = await supabase
-        .from('blog_posts')
-        .update(postData)
-        .eq('wordpress_id', wpPost.id)
-        .select()
-        .single()
+    // Usar upsert para criar ou atualizar
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .upsert(postData, {
+        onConflict: 'wordpress_id',
+        ignoreDuplicates: false
+      })
+      .select()
+      .single()
 
-      if (error) throw error
+    if (error) {
+      // Se erro de slug duplicado, tentar com ID
+      if (error.code === '23505' && error.message.includes('slug')) {
+        const newSlug = `${slug}-${wpPost.id}`
+        const { data: retryData, error: retryError } = await supabase
+          .from('blog_posts')
+          .upsert(
+            { ...postData, slug: newSlug },
+            {
+              onConflict: 'wordpress_id',
+              ignoreDuplicates: false
+            }
+          )
+          .select()
+          .single()
 
-      return { success: true, action: 'updated', data }
-    } else {
-      // Criar novo artigo
-      const { data, error } = await supabase
-        .from('blog_posts')
-        .insert(postData)
-        .select()
-        .single()
-
-      if (error) {
-        // Se slug duplicado, adicionar ID
-        if (error.code === '23505' && error.message.includes('slug')) {
-          const newSlug = `${slug}-${wpPost.id}`
-          const { data: retryData, error: retryError } = await supabase
-            .from('blog_posts')
-            .insert({ ...postData, slug: newSlug })
-            .select()
-            .single()
-
-          if (retryError) throw retryError
-          return { success: true, action: 'created', data: retryData }
+        if (retryError) {
+          console.error('Erro ao sincronizar artigo (tentativa com slug modificado):', {
+            wordpress_id: wpPost.id,
+            title,
+            error: retryError.message,
+            code: retryError.code
+          })
+          throw retryError
         }
-        throw error
+
+        return { success: true, action: 'created', data: retryData }
       }
 
-      return { success: true, action: 'created', data }
+      console.error('Erro ao sincronizar artigo:', {
+        wordpress_id: wpPost.id,
+        title,
+        error: error.message,
+        code: error.code
+      })
+      throw error
     }
+
+    // Verificar se foi criação ou atualização verificando se updated_at mudou significativamente
+    // (Método simples: assumir que se data existe, foi atualização, senão foi criação)
+    // Nota: O Supabase upsert não retorna essa informação diretamente
+    const action = data ? 'updated' : 'created'
+
+    return { success: true, action, data }
   } catch (error: any) {
-    console.error('Erro ao sincronizar artigo:', error)
+    console.error('Erro ao sincronizar artigo:', {
+      wordpress_id: wordpressId,
+      error: error.message,
+      stack: error.stack
+    })
     return { success: false, error: error.message }
   }
 }
@@ -225,14 +397,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!wordpress_id) {
+    // Validar wordpress_id
+    const validatedId = validateWordPressId(wordpress_id)
+    if (!validatedId) {
       return NextResponse.json(
-        { error: 'wordpress_id é obrigatório' },
+        { error: 'wordpress_id é obrigatório e deve ser um número inteiro positivo' },
         { status: 400 }
       )
     }
 
-    const result = await syncWordPressPost(Number(wordpress_id))
+    const result = await syncWordPressPost(validatedId)
 
     if (result.success) {
       return NextResponse.json({
@@ -248,7 +422,10 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error: any) {
-    console.error('Erro no webhook:', error)
+    console.error('Erro no webhook POST:', {
+      error: error.message,
+      stack: error.stack
+    })
     return NextResponse.json(
       { error: error.message || 'Erro interno do servidor' },
       { status: 500 }
@@ -278,13 +455,14 @@ export async function GET(request: NextRequest) {
     const perPage = 100
 
     while (true) {
-      const response = await fetch(
-        `https://clinicafreud.pt/wp-json/wp/v2/posts?per_page=${perPage}&page=${page}&_embed=true&status=publish`
+      const response = await fetchWithTimeout(
+        `${WORDPRESS_API_URL}/wp-json/wp/v2/posts?per_page=${perPage}&page=${page}&_embed=true&status=publish`
       )
 
       if (!response.ok) {
         if (response.status === 400) break
-        throw new Error(`HTTP ${response.status}`)
+        const errorResult = handleWordPressError(response.status, response.statusText)
+        throw new Error(errorResult.message)
       }
 
       const posts = await response.json()
@@ -295,12 +473,17 @@ export async function GET(request: NextRequest) {
       page++
     }
 
-    // Sincronizar cada artigo
+    // Sincronizar cada artigo com delay para evitar sobrecarga
     let successCount = 0
     let errorCount = 0
     const results: any[] = []
 
     for (const wpPost of allPosts) {
+      // Adicionar delay entre requisições (exceto na primeira)
+      if (results.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, SYNC_DELAY_MS))
+      }
+
       const result = await syncWordPressPost(wpPost.id)
       if (result.success) {
         successCount++
@@ -319,7 +502,10 @@ export async function GET(request: NextRequest) {
       results,
     })
   } catch (error: any) {
-    console.error('Erro na sincronização completa:', error)
+    console.error('Erro na sincronização completa:', {
+      error: error.message,
+      stack: error.stack
+    })
     return NextResponse.json(
       { error: error.message || 'Erro interno do servidor' },
       { status: 500 }
