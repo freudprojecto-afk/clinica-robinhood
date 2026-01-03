@@ -138,14 +138,15 @@ async function syncWordPressPost(wordpressId: number) {
       authorName = wpPost._embedded.author[0].name
       authorEmail = wpPost._embedded.author[0].email
     }
-
     // Função auxiliar para extrair meta field (tenta com e sem underscore)
-    const getMetaField = (fieldName: string): any => {
-      return wpPost.meta?.[fieldName] || 
-             wpPost.meta?.[`_${fieldName}`] ||
-             wpPost.yoast_meta?.[fieldName] ||
-             null
-    }
+const getMetaField = (fieldName: string): any => {
+  return wpPost[fieldName] ||                          // Nível raiz (register_rest_field)
+         wpPost[`_${fieldName}`] ||                    // Nível raiz com underscore
+         wpPost.meta?.[fieldName] ||                   // Dentro de meta
+         wpPost.meta?.[`_${fieldName}`] ||            // Dentro de meta com underscore
+         wpPost.yoast_meta?.[fieldName] ||            // Yoast SEO (fallback)
+         null
+}
 
     // Extrair TODOS os dados SEO do Rank Math
     let metaTitle = getMetaField('rank_math_title') || getMetaField('yoast_wpseo_title')
