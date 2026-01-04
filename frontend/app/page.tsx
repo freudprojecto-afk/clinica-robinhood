@@ -1864,41 +1864,56 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
             {/* Páginas */}
-            <div>
-              <h3 className="text-xl font-bold text-clinica-bg mb-4">Páginas</h3>
-              <ul className="space-y-2">
-                <li>
-                  <button onClick={() => scrollParaSecao('home')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
-                    Home
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollParaSecao('servicos')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
-                    Serviços
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollParaSecao('corpo-clinico')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
-                    Corpo Clínico
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollParaSecao('depoimentos')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
-                    Depoimentos
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollParaSecao('blog')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
-                    Blog
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => scrollParaSecao('faq')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
-                    FAQ
-                  </button>
-                </li>
-              </ul>
-            </div>
+<div>
+  <h3 className="text-xl font-bold text-clinica-bg mb-4">Páginas</h3>
+  <ul className="space-y-2">
+    <li>
+      <button onClick={() => scrollParaSecao('sobre')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Sobre Nós
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('servicos')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Serviços
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('corpo-clinico')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Corpo Clínico
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('depoimentos')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Depoimentos
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('blog')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Blog
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('seguradoras')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Seguradoras
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('faq')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        FAQ
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('compromisso-etico')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Compromisso Ético
+      </button>
+    </li>
+    <li>
+      <button onClick={() => scrollParaSecao('contactos')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
+        Contactos
+      </button>
+    </li>
+  </ul>
+</div>
 
             {/* Contacto */}
             <div>
@@ -2026,6 +2041,7 @@ export default function Home() {
     </div>
   )
 }
+
 
 
 
