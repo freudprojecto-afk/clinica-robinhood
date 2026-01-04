@@ -138,72 +138,158 @@ async function syncWordPressPost(wordpressId: number) {
       authorName = wpPost._embedded.author[0].name
       authorEmail = wpPost._embedded.author[0].email
     }
-    // Função auxiliar para extrair meta field (tenta com e sem underscore)
-const getMetaField = (fieldName: string): any => {
-  return wpPost[fieldName] ||                          // Nível raiz (register_rest_field)
-         wpPost[`_${fieldName}`] ||                    // Nível raiz com underscore
-         wpPost.meta?.[fieldName] ||                   // Dentro de meta
-         wpPost.meta?.[`_${fieldName}`] ||            // Dentro de meta com underscore
-         wpPost.yoast_meta?.[fieldName] ||            // Yoast SEO (fallback)
-         null
-}
 
-    // Extrair TODOS os dados SEO do Rank Math
-    let metaTitle = getMetaField('rank_math_title') || getMetaField('yoast_wpseo_title')
-    let metaDescription = getMetaField('rank_math_description') || getMetaField('yoast_wpseo_metadesc')
+    // Função auxiliar para extrair meta field (tenta com e sem underscore)
+    // Procura no nível raiz (register_rest_field) e em meta/yoast_meta
+    const getMetaField = (fieldName: string): any => {
+      return wpPost[fieldName] ||                          // Nível raiz (register_rest_field)
+             wpPost[`_${fieldName}`] ||                    // Nível raiz com underscore
+             wpPost.meta?.[fieldName] ||                   // Dentro de meta
+             wpPost.meta?.[`_${fieldName}`] ||            // Dentro de meta com underscore
+             wpPost.yoast_meta?.[fieldName] ||            // Yoast SEO (fallback)
+             null
+    }
+
+    // Função para fazer parse do HTML do Rank Math e extrair meta tags
+    const parseMetaTags = (html: string): any => {
+      const metaTags: any = {}
+      if (!html) return metaTags
+
+      // Extrair title
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+      if (titleMatch) metaTags.title = titleMatch[1]
+
+      // Extrair meta description
+      const descMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i)
+      if (descMatch) metaTags.description = descMatch[1]
+
+      // Extrair og:title
+      const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)
+      if (ogTitleMatch) metaTags.ogTitle = ogTitleMatch[1]
+
+      // Extrair og:description
+      const ogDescMatch = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)
+      if (ogDescMatch) metaTags.ogDescription = ogDescMatch[1]
+
+      // Extrair og:image
+      const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)
+      if (ogImageMatch) metaTags.ogImage = ogImageMatch[1]
+
+      // Extrair twitter:title
+      const twTitleMatch = html.match(/<meta\s+name=["']twitter:title["']\s+content=["']([^"']+)["']/i)
+      if (twTitleMatch) metaTags.twitterTitle = twTitleMatch[1]
+
+      // Extrair twitter:description
+      const twDescMatch = html.match(/<meta\s+name=["']twitter:description["']\s+content=["']([^"']+)["']/i)
+      if (twDescMatch) metaTags.twitterDescription = twDescMatch[1]
+
+      // Extrair twitter:image
+      const twImageMatch = html.match(/<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i)
+      if (twImageMatch) metaTags.twitterImage = twImageMatch[1]
+
+      // Extrair canonical URL
+      const canonicalMatch = html.match(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']/i)
+      if (canonicalMatch) metaTags.canonical = canonicalMatch[1]
+
+      // Extrair robots meta
+      const robotsMatch = html.match(/<meta\s+name=["']robots["']\s+content=["']([^"']+)["']/i)
+      if (robotsMatch) metaTags.robots = robotsMatch[1]
+
+      return metaTags
+    }
+
+    // PRIMEIRO: Buscar dados SEO calculados via Rank Math API (prioridade máxima)
+    let seoApiData: any = {}
+    let parsedMetaTags: any = {}
     
-    // Keywords (focus keyword principal e secundários)
+    try {
+      // Tentar API do Rank Math que retorna HTML com meta tags calculadas
+      const seoResponse = await fetchWithTimeout(
+        `${WORDPRESS_API_URL}/wp-json/rankmath/v1/getHead?url=${encodeURIComponent(wpPost.link)}`,
+        {},
+        10000 // 10s timeout para API SEO
+      )
+      
+      if (seoResponse.ok) {
+        const seoHtml = await seoResponse.text()
+        parsedMetaTags = parseMetaTags(seoHtml)
+        seoApiData = { html: seoHtml, parsed: parsedMetaTags }
+        
+        // Log para debug (apenas em desenvolvimento)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[SEO Debug] Rank Math API para post ${wordpressId}:`, {
+            hasTitle: !!parsedMetaTags.title,
+            hasDescription: !!parsedMetaTags.description,
+            hasOgTitle: !!parsedMetaTags.ogTitle,
+          })
+        }
+      }
+    } catch (e: any) {
+      // Log silencioso - usar fallback dos meta fields
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[SEO Debug] Rank Math API falhou para post ${wordpressId}:`, e.message)
+      }
+    }
+
+    // SEGUNDO: Extrair dados dos meta fields do WordPress (fallback)
+    // O Rank Math pode armazenar valores personalizados aqui
+    let metaTitle = parsedMetaTags.title || 
+                    getMetaField('rank_math_title') || 
+                    getMetaField('yoast_wpseo_title') ||
+                    null
+    
+    let metaDescription = parsedMetaTags.description || 
+                          getMetaField('rank_math_description') || 
+                          getMetaField('yoast_wpseo_metadesc') ||
+                          null
+    
+    // Keywords (focus keyword principal e secundários) - sempre dos meta fields
     const metaKeywords = getMetaField('rank_math_focus_keyword') || getMetaField('yoast_wpseo_focuskw')
     const secondaryKeywords = getMetaField('rank_math_secondary_focus_keyword')
     const tertiaryKeywords = getMetaField('rank_math_tertiary_focus_keyword')
     
-    // Canonical URL (usar do Rank Math se disponível, senão usar link original)
-    const canonicalUrl = getMetaField('rank_math_canonical_url') || wpPost.link
+    // Canonical URL (priorizar API parse, depois meta field, depois link)
+    const canonicalUrl = parsedMetaTags.canonical || 
+                         getMetaField('rank_math_canonical_url') || 
+                         wpPost.link
     
-    // Robots Meta
-    const robotsMeta = getMetaField('rank_math_robots')
+    // Robots Meta (priorizar API parse)
+    const robotsMeta = parsedMetaTags.robots || getMetaField('rank_math_robots')
     const advancedRobots = getMetaField('rank_math_advanced_robots')
     
-    // Facebook/Open Graph
-    const ogTitle = getMetaField('rank_math_facebook_title')
-    const ogDescription = getMetaField('rank_math_facebook_description')
-    const ogImage = getMetaField('rank_math_facebook_image') || 
-                   getMetaField('rank_math_og_image')
+    // Facebook/Open Graph (priorizar API parse)
+    const ogTitle = parsedMetaTags.ogTitle || 
+                    getMetaField('rank_math_facebook_title') ||
+                    metaTitle // Fallback para meta title
+    const ogDescription = parsedMetaTags.ogDescription || 
+                          getMetaField('rank_math_facebook_description') ||
+                          metaDescription // Fallback para meta description
+    const ogImage = parsedMetaTags.ogImage || 
+                    getMetaField('rank_math_facebook_image') || 
+                    getMetaField('rank_math_og_image')
     
-    // Twitter Card
-    const twitterTitle = getMetaField('rank_math_twitter_title')
-    const twitterDescription = getMetaField('rank_math_twitter_description')
-    const twitterImage = getMetaField('rank_math_twitter_image')
+    // Twitter Card (priorizar API parse)
+    const twitterTitle = parsedMetaTags.twitterTitle || 
+                         getMetaField('rank_math_twitter_title') ||
+                         ogTitle || metaTitle // Fallback em cascata
+    const twitterDescription = parsedMetaTags.twitterDescription || 
+                               getMetaField('rank_math_twitter_description') ||
+                               ogDescription || metaDescription // Fallback em cascata
+    const twitterImage = parsedMetaTags.twitterImage || 
+                         getMetaField('rank_math_twitter_image') ||
+                         ogImage // Fallback para OG image
     const twitterCardType = getMetaField('rank_math_twitter_card_type') || 'summary_large_image'
     
-    // Schema/Rich Snippets
+    // Schema/Rich Snippets (sempre dos meta fields)
     const schemaType = getMetaField('rank_math_schema_type')
     const articleSchemaType = getMetaField('rank_math_schema_article_type')
     const richSnippetType = getMetaField('rank_math_rich_snippet')
     
-    // Primary Category
+    // Primary Category (sempre dos meta fields)
     const primaryCategory = getMetaField('rank_math_primary_category')
     
     // SEO Score (para referência)
     const seoScore = getMetaField('rank_math_seo_score')
-
-    // Buscar dados SEO completos via Rank Math API (se disponível)
-    let seoApiData: any = {}
-    try {
-      const seoResponse = await fetchWithTimeout(
-        `${WORDPRESS_API_URL}/wp-json/rankmath/v1/getHead?url=${encodeURIComponent(wpPost.link)}`
-      )
-      if (seoResponse.ok) {
-        const seoInfo = await seoResponse.json()
-        seoApiData = seoInfo
-        
-        // Se a API retornar dados, usar como fallback para campos vazios
-        if (!metaTitle && seoInfo.title) metaTitle = seoInfo.title
-        if (!metaDescription && seoInfo.description) metaDescription = seoInfo.description
-      }
-    } catch (e) {
-      // Se não conseguir, usar dados dos meta fields (já extraídos acima)
-    }
 
     // Construir schema markup (JSON-LD) completo e otimizado para Google
     // Usar o tipo de schema definido no Rank Math, ou Article por padrão
@@ -319,11 +405,24 @@ const getMetaField = (fieldName: string): any => {
       updated_at: new Date().toISOString(),
     }
 
+    // Verificar se já existe um post com o mesmo wordpress_id antes do upsert
+    // Isso garante que não criamos duplicados
+    const { data: existingPost, error: checkError } = await supabase
+      .from('blog_posts')
+      .select('id, wordpress_id, title')
+      .eq('wordpress_id', wpPost.id)
+      .maybeSingle()
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = nenhum resultado (OK)
+      console.error('Erro ao verificar post existente:', checkError)
+    }
+
     // Usar upsert para criar ou atualizar
+    // IMPORTANTE: wordpress_id deve ter UNIQUE constraint no Supabase
     const { data, error } = await supabase
       .from('blog_posts')
       .upsert(postData, {
-        onConflict: 'wordpress_id',
+        onConflict: 'wordpress_id', // Deve ser uma constraint UNIQUE no Supabase
         ignoreDuplicates: false
       })
       .select()
@@ -355,22 +454,45 @@ const getMetaField = (fieldName: string): any => {
           throw retryError
         }
 
-        return { success: true, action: 'created', data: retryData }
+        return { success: true, action: existingPost ? 'updated' : 'created', data: retryData }
+      }
+
+      // Se erro de constraint UNIQUE no wordpress_id, tentar atualizar diretamente
+      if (error.code === '23505' && error.message.includes('wordpress_id')) {
+        console.warn(`[Duplicação] Detectado wordpress_id duplicado para ${wpPost.id}, tentando atualizar...`)
+        
+        const { data: updateData, error: updateError } = await supabase
+          .from('blog_posts')
+          .update(postData)
+          .eq('wordpress_id', wpPost.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('Erro ao atualizar artigo após detecção de duplicado:', {
+            wordpress_id: wpPost.id,
+            title,
+            error: updateError.message,
+            code: updateError.code
+          })
+          throw updateError
+        }
+
+        return { success: true, action: 'updated', data: updateData }
       }
 
       console.error('Erro ao sincronizar artigo:', {
         wordpress_id: wpPost.id,
         title,
         error: error.message,
-        code: error.code
+        code: error.code,
+        existingPost: existingPost?.id
       })
       throw error
     }
 
-    // Verificar se foi criação ou atualização verificando se updated_at mudou significativamente
-    // (Método simples: assumir que se data existe, foi atualização, senão foi criação)
-    // Nota: O Supabase upsert não retorna essa informação diretamente
-    const action = data ? 'updated' : 'created'
+    // Determinar se foi criação ou atualização baseado na verificação anterior
+    const action = existingPost ? 'updated' : 'created'
 
     return { success: true, action, data }
   } catch (error: any) {
@@ -520,6 +642,7 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json()
     const { wordpress_id, secret } = body
 
+    // Verificar secret (opcional, para segurança)
     const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
     if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
       return NextResponse.json(
@@ -528,6 +651,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // Validar wordpress_id
     const validatedId = validateWordPressId(wordpress_id)
     if (!validatedId) {
       return NextResponse.json(
@@ -536,13 +660,18 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const { data: existingPost, error: fetchError } = await supabase
+    // Verificar se o artigo existe no Supabase (pode haver duplicados)
+    // Usar .maybeSingle() ou buscar todos para evitar erro se houver múltiplos
+    const { data: existingPosts, error: fetchError } = await supabase
       .from('blog_posts')
       .select('id, title, wordpress_id')
       .eq('wordpress_id', validatedId)
-      .single()
 
-    if (fetchError || !existingPost) {
+    if (fetchError) {
+      console.error('Erro ao verificar artigo antes de deletar:', fetchError)
+    }
+
+    if (!existingPosts || existingPosts.length === 0) {
       return NextResponse.json(
         { 
           success: true, 
@@ -553,10 +682,17 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const { error: deleteError } = await supabase
+    // Se houver duplicados, logar aviso
+    if (existingPosts.length > 1) {
+      console.warn(`[DELETE] Detectados ${existingPosts.length} duplicados para wordpress_id ${validatedId}. Removendo todos.`)
+    }
+
+    // Remover TODOS os artigos com este wordpress_id (remove duplicados também)
+    const { data: deletedPosts, error: deleteError } = await supabase
       .from('blog_posts')
       .delete()
       .eq('wordpress_id', validatedId)
+      .select('id, title')
 
     if (deleteError) {
       console.error('Erro ao remover artigo:', {
@@ -567,11 +703,17 @@ export async function DELETE(request: NextRequest) {
       throw deleteError
     }
 
+    const deletedCount = deletedPosts?.length || existingPosts.length
+    const title = existingPosts[0]?.title || 'Artigo'
+
     return NextResponse.json({
       success: true,
-      message: 'Artigo removido com sucesso',
+      message: deletedCount > 1 
+        ? `Artigo e ${deletedCount - 1} duplicado(s) removido(s) com sucesso`
+        : 'Artigo removido com sucesso',
       wordpress_id: validatedId,
-      title: existingPost.title
+      title: title,
+      deleted_count: deletedCount
     })
   } catch (error: any) {
     console.error('Erro ao remover artigo:', {
