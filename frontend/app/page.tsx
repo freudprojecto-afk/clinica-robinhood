@@ -1,6 +1,5 @@
 'use client'
 
-import UltimosArtigosHomepage from '@/components/UltimosArtigosHomepage'
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe, Navigation2, ExternalLink, Facebook, Instagram, Youtube } from 'lucide-react'
@@ -2089,5 +2088,6 @@ export default function Home() {
     </div>
   )
 }
+
 
 
