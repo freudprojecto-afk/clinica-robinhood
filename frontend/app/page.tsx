@@ -1878,11 +1878,6 @@ export default function Home() {
                   </button>
                 </li>
                 <li>
-                  <a href="#little-freud" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
-                    Little Freud
-                  </a>
-                </li>
-                <li>
                   <button onClick={() => scrollParaSecao('corpo-clinico')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
                     Corpo Clínico
                   </button>
@@ -1896,11 +1891,6 @@ export default function Home() {
                   <button onClick={() => scrollParaSecao('blog')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
                     Blog
                   </button>
-                </li>
-                <li>
-                  <a href="#publicacoes" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
-                    Publicações
-                  </a>
                 </li>
                 <li>
                   <button onClick={() => scrollParaSecao('faq')} className="text-clinica-bg/80 hover:text-clinica-bg transition-colors text-left">
@@ -1917,12 +1907,6 @@ export default function Home() {
                 <li className="flex items-center gap-2">
                   <Phone className="w-5 h-5 text-clinica-bg/80" />
                   <a href="tel:+351916649284" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
-                    +351 916 649 284
-                  </a>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Phone className="w-5 h-5 text-clinica-bg/80" />
-                  <a href="https://wa.me/351916649284" className="text-clinica-bg/80 hover:text-clinica-bg transition-colors">
                     +351 916 649 284
                   </a>
                 </li>
@@ -2042,6 +2026,7 @@ export default function Home() {
     </div>
   )
 }
+
 
 
 
