@@ -1230,23 +1230,6 @@ export default function Home() {
   const [services, setServices] = useState<Array<{ title: string; desc: string; image: string }>>([])
 
   // Secções disponíveis para o menu "O que oferecemos?"
-  return (
-  <>
-    {/* Hero Section */}
-    <section>...</section>
-
-    {/* O que oferecemos */}
-    <section id="servicos">...</section>
-
-    {/* ✅ ADICIONAR AQUI */}
-    <UltimosArtigosHomepage />
-
-    {/* Quem Somos */}
-    <section id="sobre" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-accent">
-      {/* ... */}
-    </section>
-  </>
-)
   const seccoes = [
     { id: 'sobre', nome: 'Sobre Nós' },
     { id: 'servicos', nome: 'Serviços' },
@@ -2088,6 +2071,3 @@ export default function Home() {
     </div>
   )
 }
-
-
-
