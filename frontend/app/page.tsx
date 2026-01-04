@@ -1681,8 +1681,8 @@ export default function Home() {
       {/* 5. DEPOIMENTOS */}
       <DepoimentosSection />
 
-      {/* 6. BLOG */}
-      <UltimosArtigosWrapper />
+      {/* 6. BLOG - Temporariamente comentado para debug */}
+{/* <UltimosArtigosWrapper /> */}
 
       {/* 7. SEGURADORAS */}
       <SeguradorasSection />
@@ -2042,4 +2042,5 @@ export default function Home() {
     </div>
   )
 }
+
 
