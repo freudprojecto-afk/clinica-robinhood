@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { FileText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Phone, Mail, MapPin, Clock, Heart, Shield, MessageSquare, BookOpen, HelpCircle, Users, Stethoscope, Star, Building2, FileCheck, X, Menu, Globe, Navigation2, ExternalLink, Facebook, Instagram, Youtube } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import UltimosArtigosWrapper from '@/components/UltimosArtigosWrapper'
 import Logo from '../components/Logo'
 
 interface Profissional {
@@ -1681,37 +1682,7 @@ export default function Home() {
       <DepoimentosSection />
 
       {/* 6. BLOG */}
-      <section id="blog" className="py-16 px-4 sm:px-6 lg:px-8 bg-clinica-bg">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-clinica-primary">Blog</h2>
-            <p className="text-lg text-clinica-text">Artigos e recursos sobre saúde mental</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((item) => (
-              <motion.div
-                key={item}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: item * 0.1 }}
-                className="bg-clinica-accent border border-clinica-primary rounded-xl p-6 hover:border-clinica-menu transition-colors cursor-pointer shadow-md hover:shadow-lg"
-              >
-                <BookOpen className="w-10 h-10 text-clinica-primary mb-4" />
-                <h3 className="text-xl font-bold mb-2 text-clinica-text">Artigo de Blog {item}</h3>
-                <p className="text-clinica-text mb-4">Descrição do artigo sobre saúde mental e bem-estar...</p>
-                <button className="text-clinica-menu hover:underline">Ler mais →</button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <UltimosArtigosWrapper />
 
       {/* 7. SEGURADORAS */}
       <SeguradorasSection />
@@ -2071,3 +2042,4 @@ export default function Home() {
     </div>
   )
 }
+
