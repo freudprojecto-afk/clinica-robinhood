@@ -166,10 +166,10 @@ export default function BlogPage() {
             className="text-center mb-12"
           >
             <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-clinica-primary mb-4 tracking-tight">
-              Clínica Freud Insights
+              Blog Clínica Freud
             </h1>
             <p className="text-xl sm:text-2xl text-clinica-text/70 max-w-3xl mx-auto">
-              Conhecimento essencial sobre psicologia, psiquiatria e bem-estar mental, direto ao ponto
+              Reflexões, orientações e descobertas sobre saúde mental, bem-estar e psicologia no dia a dia
             </p>
           </motion.div>
 
