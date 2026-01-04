@@ -2,7 +2,6 @@ import { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import BlogPostClient from './BlogPostClient'
 
-// ✅ Função que gera meta tags para SEO (Server Component)
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,13 +16,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     .single()
 
   if (!post) {
-    return { title: 'Artigo não encontrado' }
+    return {
+      title: 'Artigo não encontrado',
+    }
   }
 
-  // ✅ USAR CAMPOS SEO DO RANK MATH
   const metaTitle = post.meta_title || post.title
   const metaDescription = post.meta_description || post.excerpt || ''
   const ogImage = post.og_image_url || post.featured_image_url
+  const canonicalUrl = post.canonical_url || undefined
 
   return {
     title: metaTitle,
@@ -37,25 +38,29 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       modifiedTime: post.updated_at || undefined,
       authors: post.author_name ? [post.author_name] : undefined,
       siteName: 'Clínica Freud',
+      url: canonicalUrl || post.wordpress_url || undefined,
     },
     twitter: {
       card: (post.twitter_card_type || 'summary_large_image') as 'summary' | 'summary_large_image',
       title: post.twitter_title || post.og_title || metaTitle,
       description: post.twitter_description || post.og_description || metaDescription,
-      images: post.twitter_image_url ? [post.twitter_image_url] : (ogImage ? [ogImage] : []),
+      images: post.twitter_image_url 
+        ? [post.twitter_image_url]
+        : (ogImage ? [ogImage] : []),
     },
     alternates: {
-      canonical: post.canonical_url || undefined,
+      canonical: canonicalUrl,
     },
-    robots: post.robots_meta ? {
-      index: !post.robots_meta.includes('noindex'),
-      follow: !post.robots_meta.includes('nofollow'),
-    } : undefined,
+    robots: post.robots_meta 
+      ? {
+          index: !post.robots_meta.includes('noindex'),
+          follow: !post.robots_meta.includes('nofollow'),
+        }
+      : undefined,
     keywords: post.meta_keywords || undefined,
   }
 }
 
-// Server Component wrapper
 export default async function BlogPostPage({ params }: { params: { slug: string } }) {
   return <BlogPostClient slug={params.slug} />
 }
